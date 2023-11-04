@@ -1,16 +1,16 @@
-import logging
 import json
-
-import typer
-from tqdm import tqdm
-from tqdm.contrib.concurrent import process_map
+import logging
 from functools import partial
-from cdp_data import CDPInstances
-from cdp_data import datasets as cdp_datasets
+from typing import Any
+
+import pandas as pd
+import typer
 from cdp_backend.database import models as cdp_db_models
 from cdp_backend.pipeline.transcript_model import Transcript
-import datasets as hf_datasets
-import pandas as pd
+from cdp_data import CDPInstances
+from cdp_data import datasets as cdp_datasets
+from tqdm import tqdm
+from tqdm.contrib.concurrent import process_map
 
 ###############################################################################
 
@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 app = typer.Typer()
 
 ###############################################################################
+
 
 def _setup_logging(
     debug: bool = False,
@@ -37,7 +38,7 @@ def _setup_logging(
         # cdp-data is noisy
         for log_name, log_obj in logging.Logger.manager.loggerDict.items():
             if log_name != __name__:
-                log_obj.disabled = True
+                log_obj.disabled = True  # type: ignore
 
     # Setup logging
     logging.basicConfig(
@@ -53,7 +54,7 @@ def _read_and_check_meeting_over_max_duration(
     # Read transcript
     with open(transcript_path) as open_file:
         transcript = Transcript.from_json(open_file.read())
-    
+
     # Get duration of meeting by using the last sentence end_time (in seconds)
     meeting_duration = transcript.sentences[-1].end_time / 60
 
@@ -74,28 +75,23 @@ def _read_and_check_meeting_over_max_duration(
 
 def _get_minutes_items_for_each_meeting(
     event_id: str,
-) -> dict[str, str] | None:
+) -> list[dict[str, Any]] | None:
     # Get event minutes item connections
-    emis = list(cdp_db_models.EventMinutesItem.collection.filter(
-        "event_ref",
-        "==",
-        f"event/{event_id}",
-    ).fetch())
-    
+    emis = list(
+        cdp_db_models.EventMinutesItem.collection.filter(
+            "event_ref",
+            "==",
+            f"event/{event_id}",
+        ).fetch()
+    )
+
     # No emis return None
     if len(emis) == 0:
         return None
-    
-    # For each event minutes item connection, get the minutes item
-    minutes_items = [
-        emi.minutes_item_ref.get()
-        for emi in emis
-    ]
 
-    return [
-        {"name": mi.name, "description": mi.description}
-        for mi in minutes_items
-    ]
+    # For each event minutes item connection, get the minutes item
+    minutes_items = [emi.minutes_item_ref.get() for emi in emis]
+    return [{"name": mi.name, "description": mi.description} for mi in minutes_items]
 
 
 @app.command()
@@ -150,13 +146,13 @@ def minutes_items(
 
         # Append to list of dataframes
         transcript_dataframes.append(council_data)
-    
+
     # Concatenate dataframes
     all_transcripts = pd.concat(transcript_dataframes)
 
     # Log current number of transcripts
     log.debug(f"Number of unfiltered transcripts: {len(all_transcripts)}")
-    
+
     # Filter out transcripts that are too long
     log.info(
         f"Filtering out meetings longer than {max_duration_meeting_minutes} minutes."
@@ -191,17 +187,16 @@ def minutes_items(
 
     # Get minutes items for each meeting
     log.info("Getting minutes items for each meeting.")
-    transcripts_under_max_duration["minutes_items"] = (
-        transcripts_under_max_duration.event_id.apply(
-            _get_minutes_items_for_each_meeting,
-        )
+    transcripts_under_max_duration[
+        "minutes_items"
+    ] = transcripts_under_max_duration.event_id.apply(
+        _get_minutes_items_for_each_meeting,
     )
 
     # Filter out meetings with no minutes items
     log.info("Filtering out meetings with no minutes items.")
     transcripts_with_minutes_items = transcripts_under_max_duration.dropna(
-        axis=0,
-        subset=["minutes_items"]
+        axis=0, subset=["minutes_items"]
     ).copy()
     log.debug(
         f"Number of transcripts with minutes items: "
@@ -210,32 +205,39 @@ def minutes_items(
 
     # Format into constructed dataset
     log.info("Formatting into constructed dataset.")
-    transcripts_with_minutes_items = transcripts_with_minutes_items[[
-        "transcript",
-        "minutes_items",
-        "council",
-        "key",
-    ]]
+    transcripts_with_minutes_items = transcripts_with_minutes_items[
+        [
+            "transcript",
+            "minutes_items",
+            "council",
+            "key",
+        ]
+    ]
     transcripts_with_minutes_items = transcripts_with_minutes_items.rename(
         columns={
             "key": "meta_session_key",
             "council": "meta_council",
         }
     )
-    
+
     # Store minutes items dict as JSON string
-    transcripts_with_minutes_items["minutes_items"] = (
-        transcripts_with_minutes_items.minutes_items.apply(json.dumps)
-    )
+    transcripts_with_minutes_items[
+        "minutes_items"
+    ] = transcripts_with_minutes_items.minutes_items.apply(json.dumps)
 
     # Save to disk
     log.info("Saving to disk.")
     transcripts_with_minutes_items.to_parquet("example-dataset.parquet")
 
+    return "example-dataset.parquet"
+
+
 ###############################################################################
+
 
 def main() -> None:
     app()
+
 
 if __name__ == "__main__":
     app()
