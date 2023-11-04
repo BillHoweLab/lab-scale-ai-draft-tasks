@@ -55,11 +55,15 @@ def _read_and_check_meeting_over_max_duration(
     with open(transcript_path) as open_file:
         transcript = Transcript.from_json(open_file.read())
 
-    # Get duration of meeting by using the last sentence end_time (in seconds)
-    meeting_duration = transcript.sentences[-1].end_time / 60
+    # Handle weird errors in the transcripts
+    if len(transcript.sentences) == 0:
+        too_long = True
+    else:
+        # Get duration of meeting by using the last sentence end_time (in seconds)
+        meeting_duration = transcript.sentences[-1].end_time / 60
 
-    # Check if meeting is too long
-    too_long = meeting_duration > max_duration_meeting_minutes
+        # Check if meeting is too long
+        too_long = meeting_duration > max_duration_meeting_minutes
 
     # Only concat all meeting content if meeting is not too long
     if too_long:
