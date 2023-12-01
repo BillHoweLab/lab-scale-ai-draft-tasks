@@ -259,6 +259,7 @@ if __name__ == '__main__':
             push_to_hub=args.hub_upload == 'True',
             save_steps=args.save_steps,
             report_to=['wandb'] if args.wandb_logging == 'True' else [],
+            load_best_model_at_end=True,
         )
 
     trainer = get_default_trainer(model, 
