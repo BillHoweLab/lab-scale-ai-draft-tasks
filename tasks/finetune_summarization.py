@@ -20,6 +20,29 @@ from evaluate_summarization import evaluate_hf_model
 from evaluate_qanda import evaluate_hf_model_qa
 from evaluate_em import evaluate_hf_model_em
 
+MODEL_CHAT_TOKENS = {
+    'openai': '',
+    'mistral': '<s>[INST] ',
+    'llama-2': '<s>[INST] <<SYS>>\nYou are a helpful assistant.\n<</SYS>>\n\n',
+    'falcon': 'A helpful assistant.\nUser: ',
+    'opt-finetune': '',
+}
+
+MODEL_END_PROMPTS = {
+    'openai': '',
+    'mistral': '[/INST]',
+    'llama-2': '[/INST]',
+    'falcon': '\nAssistant:',
+    'opt-finetune': '',
+}
+
+MODEL_SUFFIXES = {
+    'openai': '',
+    'mistral': '</s>',
+    'llama-2': '</s>',
+    'falcon': '<|endoftext|>',
+    'opt-finetune': '</s>',
+}
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
 
@@ -67,11 +90,12 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_api_var', type=str, default='WANDB_API_KEY', help='Name of the WandB API key variable name.')
 
     # Prompt arguments
-    parser.add_argument('--start_prompt', type=str, default=' ### Summarize the following: ', help='The start prompt to add to the beginning of the input text.')
-    parser.add_argument('--end_prompt', type=str, default=' ### Begin summary: ', help='The end prompt to add to the end of the input text.')
-    parser.add_argument('--suffix', type=str, default='', help='The suffix to add to the end of the input and target text.')
+    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation: ', help='The start prompt to add to the beginning of the input text.')
+    parser.add_argument('--end_prompt', type=str, default=' Begin summary: ', help='The end prompt to add to the end of the input text.')
+    parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=974, help='The maximum sequence length to use for fine-tuning.')
-
+    parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
+    
     # Training arguments
     parser.add_argument('--batch_size', type=int, default=1, help='The batch size to use for fine-tuning.')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=4, help='The number of gradient accumulation steps to use for fine-tuning.')
@@ -98,6 +122,13 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
 
+    # Update the start and end prompts if using the model defaults
+    if args.use_model_prompt_defaults:
+
+        args.start_prompt = MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
+        args.end_prompt = args.end_prompt + MODEL_END_PROMPTS[args.use_model_prompt_defaults]
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        
     # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
     def data_formatter(data: Mapping,
                        input_field: str=args.input_col,
