@@ -69,9 +69,9 @@ if __name__ == '__main__':
     parser.add_argument('--version', type=str, default='3.0.0', nargs='?', help='The version of the dataset to use for fine-tuning.')
     parser.add_argument('--input_col', type=str, default='article', help='The name of the input column in the dataset.')
     parser.add_argument('--target_col', type=str, default='highlights', help='The name of the target column in the dataset.')
-    parser.add_argument('--train_slice', type=str, default='train[:50]', help='The slice of the training dataset to use for fine-tuning.')
-    parser.add_argument('--validation_slice', type=str, default='validation[:10]', help='The slice of the validation dataset to use for fine-tuning.')
-    parser.add_argument('--test_slice', type=str, default='test[:10]', help='The slice of the test dataset to use for fine-tuning.')
+    parser.add_argument('--train_slice', type=str, default='train', help='The slice of the training dataset to use for fine-tuning.')
+    parser.add_argument('--validation_slice', type=str, default='validation', help='The slice of the validation dataset to use for fine-tuning.')
+    parser.add_argument('--test_slice', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
 
     # Saving arguments
     parser.add_argument('--save_model', type=str, default='True', help='Whether to save the fine-tuned model and tokenizer.')
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     # Hub arguments
     parser.add_argument('--hub_upload', type=str, default='False', help='Whether to upload the model to the hub.')
     parser.add_argument('--hub_save_id', type=str, default='wolferobert3/opt-125m-peft-summarization', help='The name under which the mode will be saved on the hub.')
-    parser.add_argument('--save_steps', type=int, default=25, help='The number of steps between saving the model to the hub.')
+    parser.add_argument('--save_steps', type=int, default=10, help='The number of steps between saving the model to the hub.')
 
     # Parse arguments
     args = parser.parse_args()
