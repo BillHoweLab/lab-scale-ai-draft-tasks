@@ -29,11 +29,11 @@ MODEL_CHAT_TOKENS = {
 }
 
 MODEL_END_PROMPTS = {
-    'openai': '',
-    'mistral': '[/INST]',
-    'llama-2': '[/INST]',
-    'falcon': '\nAssistant:',
-    'opt-finetune': '',
+    'openai': ' ',
+    'mistral': '[/INST] ',
+    'llama-2': '[/INST] ',
+    'falcon': '\nAssistant: ',
+    'opt-finetune': ' ',
 }
 
 MODEL_SUFFIXES = {
@@ -90,8 +90,8 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_api_var', type=str, default='WANDB_API_KEY', help='Name of the WandB API key variable name.')
 
     # Prompt arguments
-    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation: ', help='The start prompt to add to the beginning of the input text.')
-    parser.add_argument('--end_prompt', type=str, default=' Begin summary: ', help='The end prompt to add to the end of the input text.')
+    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n', help='The start prompt to add to the beginning of the input text.')
+    parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary:', help='The end prompt to add to the end of the input text.')
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=974, help='The maximum sequence length to use for fine-tuning.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
