@@ -43,6 +43,7 @@ MODEL_SUFFIXES = {
     'falcon': '<|endoftext|>',
     'opt-finetune': '</s>',
 }
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
 
@@ -316,7 +317,10 @@ if __name__ == '__main__':
                                     target_column=args.target_col,
                                     max_samples=len(data['test']),
                                     start_prompt=args.start_prompt,
-                                    end_prompt=args.end_prompt,)
+                                    end_prompt=args.end_prompt,
+                                    remove_suffix=args.suffix,
+                                    min_new_tokens=1,
+                                    max_new_tokens=100)
         
         logger.info(f'Completed ROUGE, BLEU, and BERTScore evaluation')
         wandb.log(metrics)
