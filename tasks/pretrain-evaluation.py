@@ -65,13 +65,25 @@ def main():
     train_data = load_dataset(args.dataset, split='train')
     validation_data = load_dataset(args.dataset, split='validation')
     test_data = load_dataset(args.dataset, split='test')
-
+    oneshot = f"\n\n## Here is an example:\n{train_data[0]['dialogue']}.\n\nSummary:\n{train_data[0]['section_text']}"
+    twoshot = f"\n\n## Here is another example:\n{train_data[1]['dialogue']}.\n\nSummary:\n{train_data[1]['section_text']}"
+    threeshot = f"\n\n## Here is another example:\n{train_data[2]['dialogue']}.\n\nSummary:\n{train_data[2]['section_text']}"
+    transition = "\n\nPlease summarize the following conversation: "
+    
     if args.use_model_prompt_defaults:
 
         args.start_prompt = MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
         args.end_prompt = args.end_prompt + MODEL_END_PROMPTS[args.use_model_prompt_defaults]
         args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]    
-    
+
+    # oneshot
+    if int(args.shot) == 1:        
+        args.start_prompt = args.start_prompt+oneshot+transition
+    if int(args.shot) == 2:        
+        args.start_prompt = args.start_prompt+oneshot+twoshot+transition
+    if int(args.shot) == 3:
+        args.start_prompt = args.start_prompt+oneshot+twoshot+threeshot+transition
+        
     #-------------------
     # load summarizer
     #-------------------
