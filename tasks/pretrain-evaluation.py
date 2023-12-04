@@ -91,7 +91,7 @@ def main():
                                                test_data,
                                                input_column=args.input_column,
                                                target_column=args.target_column,
-                                               max_samples=len(data['test']),
+                                               max_samples=len(test_data),
                                                start_prompt=args.start_prompt,
                                                end_prompt=args.end_prompt,
                                                remove_suffix=args.suffix)
