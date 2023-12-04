@@ -50,8 +50,8 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/wikiqa')
     parser.add_argument('--input_column', type=str, default='Question')
     parser.add_argument('--target_column', type=str, default='Sentence')
-    parser.add_argument('--start_prompt', type=str, default='### Answer the following question: ')
-    parser.add_argument('--end_prompt', type=str, default='### Begin answering: ')
+    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n')
+    parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary: ')
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
@@ -68,7 +68,7 @@ def main():
     oneshot = f"\n\n## Here is an example:\n{train_data[0]['dialogue']}.\n\nSummary:\n{train_data[0]['section_text']}"
     twoshot = f"\n\n## Here is another example:\n{train_data[1]['dialogue']}.\n\nSummary:\n{train_data[1]['section_text']}"
     threeshot = f"\n\n## Here is another example:\n{train_data[2]['dialogue']}.\n\nSummary:\n{train_data[2]['section_text']}"
-    transition = "\n\nPlease summarize the following conversation: "
+    transition = "\n\nNow please summarize the following conversation:\n\n"
     
     if args.use_model_prompt_defaults:
 
