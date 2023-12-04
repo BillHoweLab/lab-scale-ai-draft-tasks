@@ -12,7 +12,31 @@ from finetune import get_model_and_tokenizer
 from evaluate_summarization import evaluate_hf_model
 import transformers
 import torch
-    
+
+MODEL_CHAT_TOKENS = {
+    'openai': '',
+    'mistral': '<s>[INST] ',
+    'llama-2': '<s>[INST] <<SYS>>\nYou are a helpful assistant.\n<</SYS>>\n\n',
+    'falcon': 'A helpful assistant.\nUser: ',
+    'opt-finetune': '',
+}
+
+MODEL_END_PROMPTS = {
+    'openai': ' ',
+    'mistral': '[/INST] ',
+    'llama-2': '[/INST] ',
+    'falcon': '\nAssistant: ',
+    'opt-finetune': ' ',
+}
+
+MODEL_SUFFIXES = {
+    'openai': '',
+    'mistral': '</s>',
+    'llama-2': '</s>',
+    'falcon': '<|endoftext|>',
+    'opt-finetune': '</s>',
+}
+
 #-----------------------
 # Main Function
 #-----------------------
@@ -28,9 +52,17 @@ def main():
     parser.add_argument('--target_column', type=str, default='Sentence')
     parser.add_argument('--start_prompt', type=str, default='### Answer the following question: ')
     parser.add_argument('--end_prompt', type=str, default='### Begin answering: ')
+    parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
+    parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
     args = parser.parse_args()
-  
+
+    if args.use_model_prompt_defaults:
+
+        args.start_prompt = MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
+        args.end_prompt = args.end_prompt + MODEL_END_PROMPTS[args.use_model_prompt_defaults]
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
+    
     #-------------------
     # load data
     #-------------------
@@ -52,7 +84,6 @@ def main():
     # inference
     #--------------
     model.eval()
-    #model.to(args.device)
     
     print('Evaluating model on ROUGE, BLEU, and BERTScore...')
     model_outputs, metrics = evaluate_hf_model(model, 
