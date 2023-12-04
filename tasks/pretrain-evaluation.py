@@ -94,9 +94,7 @@ def main():
                                                max_samples=len(data['test']),
                                                start_prompt=args.start_prompt,
                                                end_prompt=args.end_prompt,
-                                               remove_suffix=args.suffix,
-                                               min_new_tokens=1,
-                                               max_new_tokens=100)
+                                               remove_suffix=args.suffix)
     
     for k, v in metrics.items():
         print(f'{k}: {v}')
