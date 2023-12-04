@@ -55,6 +55,7 @@ def main():
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
+    parser.add_argument('--shot', type=str, default='0', help='The device to mount the model on.')
     args = parser.parse_args()
     
     #-------------------
@@ -69,8 +70,8 @@ def main():
 
         args.start_prompt = MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
         args.end_prompt = args.end_prompt + MODEL_END_PROMPTS[args.use_model_prompt_defaults]
-        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
-        
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]    
+    
     #-------------------
     # load summarizer
     #-------------------
