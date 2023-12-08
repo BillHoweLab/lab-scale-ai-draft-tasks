@@ -288,89 +288,83 @@ if __name__ == '__main__':
 
     # Evaluate model on ROUGE, BLEU, and BERTScore
     if args.compute_summarization_metrics == 'True':
-
+        
         model = trainer.model
-
         model.eval()
         model.to(args.device)
         model.config.use_cache = True
 
+        # ==================
+        # few-shot examples
+        # ==================
+        example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[0]['dialogue']}\n\n## Topic:\n{train_data[0]['section_header']}\n\n## Summary:"""
+        example_1_response = f"""{train_data[0]['section_text']}"""
+        example_2_question = f"""Here is another example example:\n\nExample 2:\n\n## Dialogue:\n{train_data[1]['dialogue']}\n\n## Topic:\n{train_data[1]['section_header']}\n\n## Summary:"""
+        example_2_response = f"""{train_data[1]['section_text']}"""
+        examples = {
+            'example_1_question':example_1_question,
+            'example_1_response':example_1_response,
+            'example_2_question':example_2_question,
+            'example_2_response':example_2_response,
+        }
+        
         print('Evaluating model on ROUGE, BLEU, and BERTScore...')
 
-        print('Zero-Shot Results...)
-        model_outputs, metrics = evaluate_hf_model(model,
-                                                   tokenizer,
-                                                   data['test'],
+        print('--- Zero-Shot Evaluation...)
+        model_outputs, metrics = evaluate_hf_model(model=model,
+                                                   tokenizer-tokenizer,
+                                                   data=data['test'],
                                                    input_column=args.input_col,
                                                    target_column=args.target_col,
                                                    max_samples=len(data['test']),
                                                    system_message=system_message,
                                                    transaction=transaction,
-                                                   remove_suffix=args.suffix)
+                                                   examples = examples,
+                                                   remove_suffix=args.suffix,
+                                                   shot = 0)
         
         logger.info(f'Zeroshot Results.')
         wandb.log(metrics)
-        for k, v in metrics.items():
-            print(f'{k}: {v}')
+        for k, v in metrics.items(): print(f'{k}: {v}')
 
         # save model outputs
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.npy", model_outputs)
 
-    if args.compute_qanda_metrics == 'True':
-
-        model = trainer.model
-
-        model.eval()
-        model.to(args.device)
-        model.config.use_cache = True
-
-        print('Evaluating model on QA Metrics (Exact Match and F1 Score)...')
-
-        qa_metrics = evaluate_hf_model_qa(model, 
-                        tokenizer, 
-                        data['test'], 
-                        question_column=args.input_col,
-                        answer_column=args.target_col,
-                        max_samples=200)
-                        #len(data['test']))
+        print('--- One-Shot Evaluation...)
+        model_outputs, metrics = evaluate_hf_model(model=model,
+                                                   tokenizer-tokenizer,
+                                                   data=data['test'],
+                                                   input_column=args.input_col,
+                                                   target_column=args.target_col,
+                                                   max_samples=len(data['test']),
+                                                   system_message=system_message,
+                                                   transaction=transaction,
+                                                   examples = examples,
+                                                   remove_suffix=args.suffix,
+                                                   shot = 1)
         
-        logger.info('Completed QA Metrics evaluation')
-        wandb.log(qa_metrics)
+        logger.info(f'Oneshot Results.')
+        wandb.log(metrics)
+        for k, v in metrics.items(): print(f'{k}: {v}')
+        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.npy", model_outputs)
 
-        # Print metrics
-        print('Finetuned Model QA Metrics:')
-
-        for k, v in qa_metrics.items():
-            print(f'{k}: {v}')
-
-    if args.compute_em_metrics == 'True':
-
-        model = trainer.model
-
-        model.eval()
-        model.to(args.device)
-        model.config.use_cache = True
-
-        print('Evaluating model on EM Metrics (F1, Precision, Accuracy, Recall)...')
-
-        em_metrics = evaluate_hf_model_em(model,
-                                          tokenizer,
-                                          data['test'],
-                                          input_column=args.input_col,
-                                          target_column=args.target_col,
-                                          max_samples=200,
-                                          start_prompt=args.start_prompt,
-                                          end_prompt=args.end_prompt,)
-        # len(data['test']))
-
-        logger.info('Completed EM Metrics evaluation')
-        wandb.log(em_metrics)
-
-        # Print metrics
-        print('Finetuned Model EM Metrics:')
-
-        for k, v in em_metrics.items():
-            print(f'{k}: {v}')
-
+        print('--- Two-Shot Evaluation...)
+        model_outputs, metrics = evaluate_hf_model(model=model,
+                                                   tokenizer-tokenizer,
+                                                   data=data['test'],
+                                                   input_column=args.input_col,
+                                                   target_column=args.target_col,
+                                                   max_samples=len(data['test']),
+                                                   system_message=system_message,
+                                                   transaction=transaction,
+                                                   examples = examples,
+                                                   remove_suffix=args.suffix,
+                                                   shot = 2)
+        
+        logger.info(f'Twoshot Results.')
+        wandb.log(metrics)
+        for k, v in metrics.items(): print(f'{k}: {v}')
+        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.npy", model_outputs)
+        
     if args.wandb_logging == 'True':
         wandb.finish()
