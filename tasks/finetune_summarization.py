@@ -310,7 +310,7 @@ if __name__ == '__main__':
         
         print('Evaluating model on ROUGE, BLEU, and BERTScore...')
 
-        print('--- Zero-Shot Evaluation...)
+        print('--- Zero-Shot Evaluation...')
         model_outputs, metrics = evaluate_hf_model(model=model,
                                                    tokenizer-tokenizer,
                                                    data=data['test'],
@@ -330,7 +330,7 @@ if __name__ == '__main__':
         # save model outputs
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.npy", model_outputs)
 
-        print('--- One-Shot Evaluation...)
+        print('--- One-Shot Evaluation...')
         model_outputs, metrics = evaluate_hf_model(model=model,
                                                    tokenizer-tokenizer,
                                                    data=data['test'],
@@ -348,7 +348,7 @@ if __name__ == '__main__':
         for k, v in metrics.items(): print(f'{k}: {v}')
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.npy", model_outputs)
 
-        print('--- Two-Shot Evaluation...)
+        print('--- Two-Shot Evaluation...')
         model_outputs, metrics = evaluate_hf_model(model=model,
                                                    tokenizer-tokenizer,
                                                    data=data['test'],
