@@ -17,32 +17,6 @@ from typing import Mapping
 
 from finetune import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
 from evaluate_summarization import evaluate_hf_model
-from evaluate_qanda import evaluate_hf_model_qa
-from evaluate_em import evaluate_hf_model_em
-
-MODEL_CHAT_TOKENS = {
-    'openai': '',
-    'mistral': '<s>[INST] ',
-    'llama-2': '<s>[INST] <<SYS>>\nYou are a helpful assistant.\n<</SYS>>\n\n',
-    'falcon': 'A helpful assistant.\nUser: ',
-    'opt-finetune': '',
-}
-
-MODEL_END_PROMPTS = {
-    'openai': ' ',
-    'mistral': '[/INST] ',
-    'llama-2': '[/INST] ',
-    'falcon': '\nAssistant: ',
-    'opt-finetune': ' ',
-}
-
-MODEL_SUFFIXES = {
-    'openai': '',
-    'mistral': '</s>',
-    'llama-2': '</s>',
-    'falcon': '<|endoftext|>',
-    'opt-finetune': '</s>',
-}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
