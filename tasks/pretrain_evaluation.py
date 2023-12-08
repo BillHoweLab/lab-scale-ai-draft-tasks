@@ -34,7 +34,6 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/medsum')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
-    parser.add_argument('--shot', type=str, default='0', help='The device to mount the model on.')
     args = parser.parse_args()
     if args.use_model_prompt_defaults:
         args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
