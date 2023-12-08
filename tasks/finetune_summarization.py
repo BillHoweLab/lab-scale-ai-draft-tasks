@@ -15,8 +15,8 @@ from huggingface_hub import login as hf_login
 from os import path, mkdir, getenv
 from typing import Mapping
 
-from finetune import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
-from evaluate_summarization import evaluate_hf_model
+from finetune_functions import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
+from evaluate_functions import evaluate_hf_model
 
 MODEL_SUFFIXES = {
     'openai': '',
