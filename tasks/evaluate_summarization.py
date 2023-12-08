@@ -75,13 +75,11 @@ def compute_summarization_metrics(predictions: Iterable,
 def evaluate_hf_model(model: AutoModelForCausalLM, 
                       tokenizer: AutoTokenizer, 
                       data: Iterable,
-                      input_column: str='###',
-                      target_column: str='###',
+                      examples,
+                      shot,
                       max_samples: int=None,
                       system_message: str='###',
                       transaction: str='###',
-                      examples = examples,
-                      shot = 0,
                       max_tokens: int=974,
                       min_new_tokens: int=25,
                       max_new_tokens: int=50,
@@ -99,10 +97,10 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
     for idx in tqdm(range(max_samples), desc='Evaluating Hugging Face model'):
   
         # Generate and decode the output string, removing the special tokens and any suffixes
-        test_question = f"""\n\n## Dialogue:\n{data[idx][input_column]}\n\n## Topic:\n{tdata[idx]['section_header']}\n\n## Summary:"""
+        input_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{tdata[idx]['section_header']}\n\n## Summary:"""
         decoded = generate_from_prompt(model=model, 
                                        tokenizer=tokenizer, 
-                                       input_data = test_question, 
+                                       input_data=input_data, 
                                        system_message=system_message, 
                                        transaction=transaction, 
                                        examples=examples,
@@ -119,7 +117,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
         
     # Compute the ROUGE, BLEU, and BERTscore metrics, comparing the model's responses to the target summaries    
     metrics = compute_summarization_metrics(model_outputs, 
-                                            data[target_column][:len(model_outputs)], 
+                                            data['section_text'][:len(model_outputs)], 
                                             rouge=rouge, 
                                             bleu=bleu, 
                                             bertscore=bertscore)
