@@ -77,7 +77,7 @@ What is the correct label? y
     """
 }
 EM_TWO_SHOT = {
-    'isaacOnline/isaacOnline/deeds-and-voting-matching':"""Here is another example of how to perform the task. 
+    'isaacOnline/deeds-and-voting-matching':"""Here is another example of how to perform the task. 
 Name 1: GILLARD JC
 Name 2: GILLARD JR J C
 Address 1: 3802 RICELAND PL UNINC NC
