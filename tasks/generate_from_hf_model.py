@@ -13,19 +13,46 @@ DEFAULT_SUMMARIZATION_PROMPTS = {
     }
 
 def generate_from_prompt(model: AutoModelForCausalLM, 
-                      tokenizer: AutoTokenizer, 
-                      input_data: str,
-                      start_prompt: str='### Summarize the following: ',
-                      end_prompt: str='\n ### Begin summary: ',
-                      max_tokens: int=974,
-                      min_new_tokens: int=25,
-                      max_new_tokens: int=50) -> str:
+                         tokenizer: AutoTokenizer, 
+                         input_data: str,
+                         system_message: str='###',
+                         transaction: str='###',
+                         max_tokens: int=974,
+                         min_new_tokens: int=25,
+                         max_new_tokens: int=50,
+                         examples,
+                         shot) -> str:
     """
     Generate and decode output from a Transformers model using a prompt.
     """
-    
+
+    example_1_question = examples['example_1_question']
+    example_1_response = examples['example_1_response']
+    example_2_question = examples['example_2_question']
+    example_2_response = examples['example_2_response']
+                             
     # Create the input string, adding the start and end prompts
-    input = start_prompt + input_data + end_prompt
+    if shot == 0:
+        chat = [
+            {"role": "user", "content": system_message + transaction + input_data}
+        ]
+        input = tokenizer.apply_chat_template(chat, tokenize=False)
+    elif shot == 1:
+        chat = [
+          {"role": "user", "content": system_message + example_1_question},
+          {"role": "assistant", "content": example_1_response},
+          {"role": "user", "content": transaction + input_data},    
+        ]
+        input = tokenizer.apply_chat_template(chat, tokenize=False)
+    else:
+        chat = [
+          {"role": "user", "content": system_message + example_1_question},
+          {"role": "assistant", "content": example_1_response},
+          {"role": "user", "content": example_2_question},
+          {"role": "assistant", "content": example_2_response},    
+          {"role": "user", "content": transaction + input_data},    
+        ]
+        input = tokenizer.apply_chat_template(chat, tokenize=False)
 
     # Check whether input will not include the end prompt due to context window length, and manually truncate if necessary
     tokenized = tokenizer.encode(input)
