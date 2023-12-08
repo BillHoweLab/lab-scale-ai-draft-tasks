@@ -143,7 +143,7 @@ What is the correct label? n
 }
 EM_TRANSITION = 'Here is the example that needs to be classified. Please respond with only one token after being asked for the correct label. '
 # Default chat tokens, end prompts, and suffixes for each model
-MODEL_CHAT_TOKENS = {
+EM_MODEL_CHAT_TOKENS = {
     'openai': '',
     'mistral': '<s>[INST] ',
     'llama-2': '<s>[INST] <<SYS>>\nYou are a helpful assistant.\n<</SYS>>\n\n',
@@ -151,7 +151,7 @@ MODEL_CHAT_TOKENS = {
     'opt-finetune': '',
 }
 
-MODEL_END_PROMPTS = {
+EM_MODEL_END_PROMPTS = {
     'openai': ' What is the correct label?',
     'mistral': ' What is the correct label? [/INST]',
     'llama-2': ' What is the correct label? [/INST]',
@@ -159,7 +159,7 @@ MODEL_END_PROMPTS = {
     'opt-finetune': ' What is the correct label?',
 }
 
-MODEL_SUFFIXES = {
+EM_MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
     'llama-2': '</s>',
@@ -565,9 +565,9 @@ if __name__ == '__main__':
     if args.start_prompt is None:
         args.start_prompt = EM_INSTRUCTION[args.dataset]
     if args.use_model_prompt_defaults:
-        args.start_prompt = MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
-        args.end_prompt = MODEL_END_PROMPTS[args.use_model_prompt_defaults]
-        args.remove_suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        args.start_prompt = EM_MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
+        args.end_prompt = EM_MODEL_END_PROMPTS[args.use_model_prompt_defaults]
+        args.remove_suffix = EM_MODEL_SUFFIXES[args.use_model_prompt_defaults]
 
 
     # Add shots to the start prompt if specified
