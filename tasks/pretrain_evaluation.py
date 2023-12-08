@@ -50,13 +50,13 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/wikiqa')
     parser.add_argument('--input_column', type=str, default='Question')
     parser.add_argument('--target_column', type=str, default='Sentence')
-    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n')
-    parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary: ')
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
-    parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
+    parser.add_argument('--chat_format', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
     parser.add_argument('--shot', type=str, default='0', help='The device to mount the model on.')
     args = parser.parse_args()
+    start_prompt = 'Please summarize the following conversation:\n\n'
+    end_prompt = '\n\nBegin summary: '
     
     #-------------------
     # load data
