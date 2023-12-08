@@ -18,6 +18,14 @@ from typing import Mapping
 from finetune import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
 from evaluate_summarization import evaluate_hf_model
 
+MODEL_SUFFIXES = {
+    'openai': '',
+    'mistral': '</s>',
+    'llama-2': '</s>',
+    'falcon': '<|im_end|>',
+    'opt-finetune': '</s>',
+}
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
 
@@ -65,8 +73,8 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_api_var', type=str, default='WANDB_API_KEY', help='Name of the WandB API key variable name.')
 
     # Prompt arguments
-    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n', help='The start prompt to add to the beginning of the input text.')
-    parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary:', help='The end prompt to add to the end of the input text.')
+    #parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n', help='The start prompt to add to the beginning of the input text.')
+    #parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary:', help='The end prompt to add to the end of the input text.')
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=974, help='The maximum sequence length to use for fine-tuning.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
@@ -97,6 +105,10 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
     
+    # Update the start and end prompts if using the model defaults
+    if args.use_model_prompt_defaults:
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        
     # HF Login
     if args.hf_token_var:
         hf_login(token=getenv(args.hf_token_var))
@@ -292,8 +304,8 @@ if __name__ == '__main__':
                                                    input_column=args.input_col,
                                                    target_column=args.target_col,
                                                    max_samples=len(data['test']),
-                                                   start_prompt=args.start_prompt,
-                                                   end_prompt=args.end_prompt,
+                                                   system_message=system_message,
+                                                   transaction=transaction,
                                                    remove_suffix=args.suffix)
         
         logger.info(f'Zeroshot Results.')
