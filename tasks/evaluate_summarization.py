@@ -75,11 +75,13 @@ def compute_summarization_metrics(predictions: Iterable,
 def evaluate_hf_model(model: AutoModelForCausalLM, 
                       tokenizer: AutoTokenizer, 
                       data: Iterable,
-                      input_column: str='article',
-                      target_column: str='highlights',
+                      input_column: str='###',
+                      target_column: str='###',
                       max_samples: int=None,
-                      start_prompt: str='Summarize the following: ',
-                      end_prompt: str='\n Begin summary:',
+                      system_message: str='###',
+                      transaction: str='###',
+                      examples = examples,
+                      shot = 0,
                       max_tokens: int=974,
                       min_new_tokens: int=25,
                       max_new_tokens: int=50,
@@ -95,16 +97,19 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
 
     # Iterate over the test set
     for idx in tqdm(range(max_samples), desc='Evaluating Hugging Face model'):
-
+  
         # Generate and decode the output string, removing the special tokens and any suffixes
-        decoded = generate_from_prompt(model, 
-                                       tokenizer, 
-                                       data[idx][input_column], 
-                                       start_prompt, 
-                                       end_prompt, 
-                                       max_tokens,
-                                       min_new_tokens,
-                                       max_new_tokens)
+        test_question = f"""\n\n## Dialogue:\n{data[idx][input_column]}\n\n## Topic:\n{tdata[idx]['section_header']}\n\n## Summary:"""
+        decoded = generate_from_prompt(model=model, 
+                                       tokenizer=tokenizer, 
+                                       input_data = test_question, 
+                                       system_message=system_message, 
+                                       transaction=transaction, 
+                                       examples=examples,
+                                       shot=shot,
+                                       max_tokens=max_tokens,
+                                       min_new_tokens=min_new_tokens,
+                                       max_new_tokens=max_new_tokens)
 
         # Remove the suffix if specified - note that Mistral-Instruct models add a </s> suffix to specify the end of the output
         if remove_suffix is not None:
