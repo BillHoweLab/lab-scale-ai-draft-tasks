@@ -96,31 +96,7 @@ if __name__ == '__main__':
 
     # Parse arguments
     args = parser.parse_args()
-
-    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
-    transaction = """\n\nPlease summarize the following dialogue."""
-
-    ## oneshot
-    example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[0]['dialogue']}\n\n## Topic:\n{train_data[0]['section_header']}\n\n## Summary:"""
-    example_1_response = f"""{train_data[0]['section_text']}"""
-
-    ## twoshot
-    example_2_question = f"""Here is another example example:\n\nExample 2:\n\n## Dialogue:\n{train_data[1]['dialogue']}\n\n## Topic:\n{train_data[1]['section_header']}\n\n## Summary:"""
-    example_2_response = f"""{train_data[1]['section_text']}"""
-        
-    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
-    def data_formatter(data: Mapping,
-                       input_field: str=args.input_col,
-                       target_field: str=args.target_col,
-                       start_prompt: str=args.start_prompt,
-                       end_prompt: str=args.end_prompt,
-                       suffix: str=args.suffix) -> list[str]:
-        """
-        Wraps the format_data_as_instructions function with the specified arguments.
-        """
-
-        return format_data_as_instructions(data, input_field, target_field, start_prompt, end_prompt, suffix)
-
+    
     # HF Login
     if args.hf_token_var:
         hf_login(token=getenv(args.hf_token_var))
@@ -177,6 +153,26 @@ if __name__ == '__main__':
 
     logger.info(f'Loaded Model ID: {args.model_id}')
 
+    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
+    
+    # ==================
+    # chat format 
+    # ==================
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
+    transaction = """\n\nPlease summarize the following dialogue."""
+    def data_formatter(data: Mapping,
+                       tokenizer, 
+                       input_field: str=args.input_col,
+                       target_field: str=args.target_col,
+                       system_message: str=system_message,
+                       transaction: str=transaction) -> list[str]:
+        """
+        Wraps the format_data_as_instructions function with the specified arguments.
+        """
+
+        return format_data_as_instructions(data, tokenizer, input_field, target_field, system_message, transaction)
+
+    
     # Get LoRA model
     if args.lora == 'True':
 
@@ -289,27 +285,24 @@ if __name__ == '__main__':
 
         print('Evaluating model on ROUGE, BLEU, and BERTScore...')
 
+        print('Zero-Shot Results...)
         model_outputs, metrics = evaluate_hf_model(model,
-                                    tokenizer,
-                                    data['test'],
-                                    input_column=args.input_col,
-                                    target_column=args.target_col,
-                                    max_samples=len(data['test']),
-                                    start_prompt=args.start_prompt,
-                                    end_prompt=args.end_prompt,
-                                    remove_suffix=args.suffix)
+                                                   tokenizer,
+                                                   data['test'],
+                                                   input_column=args.input_col,
+                                                   target_column=args.target_col,
+                                                   max_samples=len(data['test']),
+                                                   start_prompt=args.start_prompt,
+                                                   end_prompt=args.end_prompt,
+                                                   remove_suffix=args.suffix)
         
-        logger.info(f'Completed ROUGE, BLEU, and BERTScore evaluation')
+        logger.info(f'Zeroshot Results.')
         wandb.log(metrics)
-
-        # Print metrics
-        print('Finetuned Model Metrics:')
-
         for k, v in metrics.items():
             print(f'{k}: {v}')
 
         # save model outputs
-        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_outputs.npy", model_outputs)
+        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.npy", model_outputs)
 
     if args.compute_qanda_metrics == 'True':
 
