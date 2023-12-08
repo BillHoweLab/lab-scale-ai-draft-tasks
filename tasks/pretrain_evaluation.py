@@ -34,7 +34,6 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/medsum')
     parser.add_argument('--input_column', type=str, default='dialogue')
     parser.add_argument('--target_column', type=str, default='section_text')
-    parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
     parser.add_argument('--shot', type=str, default='0', help='The device to mount the model on.')
