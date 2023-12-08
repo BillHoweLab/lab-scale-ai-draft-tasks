@@ -97,12 +97,16 @@ if __name__ == '__main__':
     # Parse arguments
     args = parser.parse_args()
 
-    # Update the start and end prompts if using the model defaults
-    if args.use_model_prompt_defaults:
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
+    transaction = """\n\nPlease summarize the following dialogue."""
 
-        args.start_prompt = MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
-        args.end_prompt = args.end_prompt + MODEL_END_PROMPTS[args.use_model_prompt_defaults]
-        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
+    ## oneshot
+    example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[0]['dialogue']}\n\n## Topic:\n{train_data[0]['section_header']}\n\n## Summary:"""
+    example_1_response = f"""{train_data[0]['section_text']}"""
+
+    ## twoshot
+    example_2_question = f"""Here is another example example:\n\nExample 2:\n\n## Dialogue:\n{train_data[1]['dialogue']}\n\n## Topic:\n{train_data[1]['section_header']}\n\n## Summary:"""
+    example_2_response = f"""{train_data[1]['section_text']}"""
         
     # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
     def data_formatter(data: Mapping,
