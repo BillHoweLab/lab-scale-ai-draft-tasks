@@ -58,7 +58,7 @@ def format_data_as_instructions(data: Mapping,
           {"role": "user", "content": system_message + transaction + test_question},
           {"role": "assistant", "content": test_response},
         ]
-        text = tokenizer.apply_chat_template(chat_finetuning, tokenize=False)
+        text = tokenizer.apply_chat_template(chat, tokenize=False)
         output_texts.append(text)
 
     return output_texts
