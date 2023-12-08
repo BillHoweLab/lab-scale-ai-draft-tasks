@@ -40,11 +40,11 @@ DEFAULT_TRAINING_ARGS = TrainingArguments(
     )
 
 def format_data_as_instructions(data: Mapping, 
+                                tokenizer, 
                                 input_field: str='article', 
                                 target_field: str='highlights', 
-                                start_prompt: str=' ### Summarize the following: ', 
-                                end_prompt: str=' ### Begin summary: ', 
-                                suffix: str='') -> list[str]:
+                                system_message: str='###', 
+                                transaction: str='###') -> list[str]:
     """
     Formats text data as instructions for the model. Can be used as a formatting function for the trainer class.
     """
@@ -53,10 +53,14 @@ def format_data_as_instructions(data: Mapping,
 
     # Iterate over the data and format the text
     for i in tqdm(range(len(data[input_field])), desc='Formatting data'):
-
-        # Add the start and end prompts to the text, and append the suffix if provided
-        text = f'{start_prompt}{data[input_field][i]}{end_prompt}{data[target_field][i]}{suffix}'
-
+        
+        test_question = f"""\n\n## Dialogue:\n{data[input_field][i]}\n\n## Topic:\n{data['section_header'][i]}\n\n## Summary:"""
+        test_response = f"""{data[target_field][i]}"""
+        chat = [
+          {"role": "user", "content": system_message + transaction + test_question},
+          {"role": "assistant", "content": test_response},
+        ]
+        text = tokenizer.apply_chat_template(chat_finetuning, tokenize=False)
         output_texts.append(text)
 
     return output_texts
