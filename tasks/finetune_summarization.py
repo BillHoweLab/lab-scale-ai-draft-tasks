@@ -174,15 +174,13 @@ if __name__ == '__main__':
     transaction = """\n\nPlease summarize the following dialogue."""
     def data_formatter(data: Mapping,
                        tokenizer, 
-                       input_field: str=args.input_col,
-                       target_field: str=args.target_col,
                        system_message: str=system_message,
                        transaction: str=transaction) -> list[str]:
         """
         Wraps the format_data_as_instructions function with the specified arguments.
         """
 
-        return format_data_as_instructions(data, tokenizer, input_field, target_field, system_message, transaction)
+        return format_data_as_instructions(data, tokenizer, system_message, transaction)
 
     
     # Get LoRA model
@@ -312,10 +310,8 @@ if __name__ == '__main__':
 
         print('--- Zero-Shot Evaluation...')
         model_outputs, metrics = evaluate_hf_model(model=model,
-                                                   tokenizer-tokenizer,
+                                                   tokenizer=tokenizer,
                                                    data=data['test'],
-                                                   input_column=args.input_col,
-                                                   target_column=args.target_col,
                                                    max_samples=len(data['test']),
                                                    system_message=system_message,
                                                    transaction=transaction,
@@ -326,16 +322,13 @@ if __name__ == '__main__':
         logger.info(f'Zeroshot Results.')
         wandb.log(metrics)
         for k, v in metrics.items(): print(f'{k}: {v}')
-
-        # save model outputs
+        with open('{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.json', 'w') as f: json.dump(mapping, f)
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.npy", model_outputs)
 
         print('--- One-Shot Evaluation...')
         model_outputs, metrics = evaluate_hf_model(model=model,
-                                                   tokenizer-tokenizer,
+                                                   tokenizer=tokenizer,
                                                    data=data['test'],
-                                                   input_column=args.input_col,
-                                                   target_column=args.target_col,
                                                    max_samples=len(data['test']),
                                                    system_message=system_message,
                                                    transaction=transaction,
@@ -346,14 +339,13 @@ if __name__ == '__main__':
         logger.info(f'Oneshot Results.')
         wandb.log(metrics)
         for k, v in metrics.items(): print(f'{k}: {v}')
+        with open('{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.json', 'w') as f: json.dump(mapping, f)            
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.npy", model_outputs)
 
         print('--- Two-Shot Evaluation...')
         model_outputs, metrics = evaluate_hf_model(model=model,
-                                                   tokenizer-tokenizer,
+                                                   tokenizer=tokenizer,
                                                    data=data['test'],
-                                                   input_column=args.input_col,
-                                                   target_column=args.target_col,
                                                    max_samples=len(data['test']),
                                                    system_message=system_message,
                                                    transaction=transaction,
@@ -364,6 +356,7 @@ if __name__ == '__main__':
         logger.info(f'Twoshot Results.')
         wandb.log(metrics)
         for k, v in metrics.items(): print(f'{k}: {v}')
+        with open('{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.json', 'w') as f: json.dump(mapping, f)            
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.npy", model_outputs)
         
     if args.wandb_logging == 'True':
