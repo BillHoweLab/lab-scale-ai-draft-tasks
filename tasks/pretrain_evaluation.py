@@ -46,7 +46,7 @@ def main():
     validation_data = load_dataset(args.dataset, split='validation')
     test_data = load_dataset(args.dataset, split='test')
     
-    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
     example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[0]['dialogue']}\n\n## Topic:\n{train_data[0]['section_header']}\n\n## Summary:"""
     example_1_response = f"""{train_data[0]['section_text']}"""
