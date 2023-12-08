@@ -51,14 +51,14 @@ def generate_from_prompt(model: AutoModelForCausalLM,
         chat = [
             {"role": "user", "content": system_message + transaction + input_data}
         ]
-        input = tokenizer.apply_chat_template(chat, tokenize=False)
+        input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
     elif shot == 1:
         chat = [
           {"role": "user", "content": system_message + example_1_question},
           {"role": "assistant", "content": example_1_response},
           {"role": "user", "content": transaction + input_data},    
         ]
-        input = tokenizer.apply_chat_template(chat, tokenize=False)
+        input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
     else:
         chat = [
           {"role": "user", "content": system_message + example_1_question},
@@ -67,7 +67,7 @@ def generate_from_prompt(model: AutoModelForCausalLM,
           {"role": "assistant", "content": example_2_response},    
           {"role": "user", "content": transaction + input_data},    
         ]
-        input = tokenizer.apply_chat_template(chat, tokenize=False)
+        input = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
 
     # Check whether input will not include the end prompt due to context window length, and manually truncate if necessary
     tokenized = tokenizer.encode(input)
@@ -172,7 +172,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
     for idx in tqdm(range(max_samples), desc='Evaluating Hugging Face model'):
   
         # Generate and decode the output string, removing the special tokens and any suffixes
-        input_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{tdata[idx]['section_header']}\n\n## Summary:"""
+        input_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
         decoded = generate_from_prompt(model=model, 
                                        tokenizer=tokenizer, 
                                        input_data=input_data, 
