@@ -15,13 +15,13 @@ DEFAULT_SUMMARIZATION_PROMPTS = {
 def generate_from_prompt(model: AutoModelForCausalLM, 
                          tokenizer: AutoTokenizer, 
                          input_data: str,
+                         examples,
+                         shot
                          system_message: str='###',
                          transaction: str='###',
                          max_tokens: int=974,
                          min_new_tokens: int=25,
-                         max_new_tokens: int=50,
-                         examples,
-                         shot) -> str:
+                         max_new_tokens: int=50) -> str:
     """
     Generate and decode output from a Transformers model using a prompt.
     """
