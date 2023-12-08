@@ -41,8 +41,6 @@ DEFAULT_TRAINING_ARGS = TrainingArguments(
 
 def format_data_as_instructions(data: Mapping, 
                                 tokenizer, 
-                                input_field: str='article', 
-                                target_field: str='highlights', 
                                 system_message: str='###', 
                                 transaction: str='###') -> list[str]:
     """
@@ -52,10 +50,10 @@ def format_data_as_instructions(data: Mapping,
     output_texts = []
 
     # Iterate over the data and format the text
-    for i in tqdm(range(len(data[input_field])), desc='Formatting data'):
+    for i in tqdm(range(len(data['dialogue'])), desc='Formatting data'):
         
-        test_question = f"""\n\n## Dialogue:\n{data[input_field][i]}\n\n## Topic:\n{data['section_header'][i]}\n\n## Summary:"""
-        test_response = f"""{data[target_field][i]}"""
+        test_question = f"""\n\n## Dialogue:\n{data['dialogue'][i]}\n\n## Topic:\n{data['section_header'][i]}\n\n## Summary:"""
+        test_response = f"""{data['section_text'][i]}"""
         chat = [
           {"role": "user", "content": system_message + transaction + test_question},
           {"role": "assistant", "content": test_response},
