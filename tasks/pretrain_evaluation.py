@@ -76,10 +76,8 @@ def main():
     
     print('--- ZeroShot Evaluation...')
     model_outputs, metrics = evaluate_hf_model(model=model,
-                                               tokenizer-tokenizer,
-                                               test_data,
-                                               input_column=args.input_col,
-                                               target_column=args.target_col,
+                                               tokenizer=tokenizer,
+                                               data=test_data,
                                                max_samples=len(test_data),
                                                system_message=system_message,
                                                transaction=transaction,
@@ -94,10 +92,8 @@ def main():
 
     print('--- OneShot Evaluation...')
     model_outputs, metrics = evaluate_hf_model(model=model,
-                                               tokenizer-tokenizer,
-                                               test_data,
-                                               input_column=args.input_col,
-                                               target_column=args.target_col,
+                                               tokenizer=tokenizer,
+                                               dat=test_data,
                                                max_samples=len(test_data),
                                                system_message=system_message,
                                                transaction=transaction,
@@ -111,10 +107,8 @@ def main():
 
     print('--- TwoShot Evaluation...')
     model_outputs, metrics = evaluate_hf_model(model=model,
-                                               tokenizer-tokenizer,
-                                               test_data,
-                                               input_column=args.input_col,
-                                               target_column=args.target_col,
+                                               tokenizer=tokenizer,
+                                               data=test_data,
                                                max_samples=len(test_data),
                                                system_message=system_message,
                                                transaction=transaction,
