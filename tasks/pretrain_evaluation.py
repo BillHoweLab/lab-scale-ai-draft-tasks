@@ -9,7 +9,7 @@ from typing import Iterable
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from finetune import get_model_and_tokenizer
-from evaluate_summarization import evaluate_hf_model
+from evaluate_functions import evaluate_hf_model
 import transformers
 import torch
 
