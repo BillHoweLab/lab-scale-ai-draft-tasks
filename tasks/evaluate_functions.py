@@ -14,8 +14,6 @@ from typing import Iterable
 from tqdm import tqdm
 from os import path, makedirs, getenv
 
-from openai_chat_api import DialogueBot
-
 # Set the default summarization prompts for each model
 DEFAULT_SUMMARIZATION_PROMPTS = {
     'llama-2-base': ('### Summarize: ', '### Begin summary:'),
