@@ -28,7 +28,7 @@ DEFAULT_SUMMARIZATION_PROMPTS = {
 def generate_from_prompt(model: AutoModelForCausalLM, 
                          tokenizer: AutoTokenizer, 
                          input_data: str,
-                         max_tokens: int=974,
+                         max_tokens: int=1024,
                          min_new_tokens: int=25,
                          max_new_tokens: int=50) -> str:
     """
@@ -39,8 +39,8 @@ def generate_from_prompt(model: AutoModelForCausalLM,
     tokenized = tokenizer.encode(input_data)
 
     # If the input is too long, truncate it to the maximum length minus the length of the end prompt
-    if len(tokenized) > max_tokens:
-      input = tokenizer.decode(tokenized[:max_tokens-len(tokenizer.encode(end_prompt))-1], skip_special_tokens=True) + end_prompt
+    #if len(tokenized) > max_tokens:
+    #  input = tokenizer.decode(tokenized[:max_tokens-len(tokenizer.encode(end_prompt))-1], skip_special_tokens=True) + end_prompt
 
     # Calculate the position of the start of the output string
     start_decode = len(tokenizer.encode(input_data, truncation=True, max_length=max_tokens))
@@ -121,7 +121,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                       max_samples: int=None,
                       system_message: str='###',
                       transaction: str='###',
-                      max_tokens: int=974,
+                      max_tokens: int=2048,
                       min_new_tokens: int=25,
                       max_new_tokens: int=50,
                       remove_suffix: str=None,
