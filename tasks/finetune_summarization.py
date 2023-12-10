@@ -322,7 +322,7 @@ if __name__ == '__main__':
         logger.info(f'Zeroshot Results.')
         wandb.log(metrics)
         for k, v in metrics.items(): print(f'{k}: {v}')
-        with open('{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.json', 'w') as f: json.dump(mapping, f)
+        with open(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.npy", model_outputs)
 
         print('--- One-Shot Evaluation...')
@@ -339,7 +339,7 @@ if __name__ == '__main__':
         logger.info(f'Oneshot Results.')
         wandb.log(metrics)
         for k, v in metrics.items(): print(f'{k}: {v}')
-        with open('{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.json', 'w') as f: json.dump(mapping, f)            
+        with open(f"{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.json", 'w') as f: json.dump(metrics, f)            
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.npy", model_outputs)
 
         print('--- Two-Shot Evaluation...')
@@ -356,7 +356,7 @@ if __name__ == '__main__':
         logger.info(f'Twoshot Results.')
         wandb.log(metrics)
         for k, v in metrics.items(): print(f'{k}: {v}')
-        with open('{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.json', 'w') as f: json.dump(mapping, f)            
+        with open(f"{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.json", 'w') as f: json.dump(metrics, f)            
         np.save(f"{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.npy", model_outputs)
         
     if args.wandb_logging == 'True':
