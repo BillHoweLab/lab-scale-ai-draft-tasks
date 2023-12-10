@@ -8,7 +8,7 @@ from openai import OpenAI
 from typing import Iterable
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from finetune import get_model_and_tokenizer
+from finetune_functions import get_model_and_tokenizer
 from evaluate_functions import evaluate_hf_model
 import transformers
 import torch
