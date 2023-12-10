@@ -43,10 +43,10 @@ def generate_from_prompt(model: AutoModelForCausalLM,
       input = tokenizer.decode(tokenized[:max_tokens-len(tokenizer.encode(end_prompt))-1], skip_special_tokens=True) + end_prompt
 
     # Calculate the position of the start of the output string
-    start_decode = len(tokenizer.encode(input, truncation=True, max_length=max_tokens))
+    start_decode = len(tokenizer.encode(input_data, truncation=True, max_length=max_tokens))
 
     # Encode the input string
-    input_ids = tokenizer(input, return_tensors='pt', truncation=True, max_length=max_tokens).to(model.device)
+    input_ids = tokenizer(input_data, return_tensors='pt', truncation=True, max_length=max_tokens).to(model.device)
 
     # Generate text from prompt
     with torch.no_grad():
