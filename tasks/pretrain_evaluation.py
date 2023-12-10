@@ -34,6 +34,7 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/medsum')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
+    parser.add_argument('--test_slice', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
     args = parser.parse_args()
     if args.use_model_prompt_defaults:
         args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
@@ -44,7 +45,7 @@ def main():
     print('Getting data...')
     train_data = load_dataset(args.dataset, split='train')
     validation_data = load_dataset(args.dataset, split='validation')
-    test_data = load_dataset(args.dataset, split='test')
+    test_data = load_dataset(args.dataset, split=args.test_slice)
     
     system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
