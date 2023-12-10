@@ -58,7 +58,7 @@ def main():
     index_1 = 0
     example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[index_1]['dialogue']}\n\n## Topic:\n{train_data[index_1]['section_header']}\n\n## Summary:"""
     example_1_response = f"""{train_data[index_1]['section_text']}"""
-    index_2 = 0
+    index_2 = 2
     example_2_question = f"""Here is another example example:\n\nExample 2:\n\n## Dialogue:\n{train_data[index_2]['dialogue']}\n\n## Topic:\n{train_data[index_2]['section_header']}\n\n## Summary:"""
     example_2_response = f"""{train_data[index_2]['section_text']}"""
     examples = {
