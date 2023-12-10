@@ -15,10 +15,16 @@ from huggingface_hub import login as hf_login
 from os import path, mkdir, getenv
 from typing import Mapping
 
-from finetune import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
-from evaluate_summarization import evaluate_hf_model
-from evaluate_qanda import evaluate_hf_model_qa
-from evaluate_em import evaluate_hf_model_em
+from finetune_functions import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
+from evaluate_functions import evaluate_hf_model
+
+MODEL_SUFFIXES = {
+    'openai': '',
+    'mistral': '</s>',
+    'llama-2': '</s>',
+    'falcon': '<|im_end|>',
+    'opt-finetune': '</s>',
+}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
@@ -45,9 +51,9 @@ if __name__ == '__main__':
     parser.add_argument('--version', type=str, default='3.0.0', nargs='?', help='The version of the dataset to use for fine-tuning.')
     parser.add_argument('--input_col', type=str, default='article', help='The name of the input column in the dataset.')
     parser.add_argument('--target_col', type=str, default='highlights', help='The name of the target column in the dataset.')
-    parser.add_argument('--train_slice', type=str, default='train[:50]', help='The slice of the training dataset to use for fine-tuning.')
-    parser.add_argument('--validation_slice', type=str, default='validation[:10]', help='The slice of the validation dataset to use for fine-tuning.')
-    parser.add_argument('--test_slice', type=str, default='test[:10]', help='The slice of the test dataset to use for fine-tuning.')
+    parser.add_argument('--train_slice', type=str, default='train', help='The slice of the training dataset to use for fine-tuning.')
+    parser.add_argument('--validation_slice', type=str, default='validation', help='The slice of the validation dataset to use for fine-tuning.')
+    parser.add_argument('--test_slice', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
 
     # Saving arguments
     parser.add_argument('--save_model', type=str, default='True', help='Whether to save the fine-tuned model and tokenizer.')
@@ -67,16 +73,17 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_api_var', type=str, default='WANDB_API_KEY', help='Name of the WandB API key variable name.')
 
     # Prompt arguments
-    parser.add_argument('--start_prompt', type=str, default=' ### Summarize the following: ', help='The start prompt to add to the beginning of the input text.')
-    parser.add_argument('--end_prompt', type=str, default=' ### Begin summary: ', help='The end prompt to add to the end of the input text.')
-    parser.add_argument('--suffix', type=str, default='', help='The suffix to add to the end of the input and target text.')
+    #parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n', help='The start prompt to add to the beginning of the input text.')
+    #parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary:', help='The end prompt to add to the end of the input text.')
+    parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=974, help='The maximum sequence length to use for fine-tuning.')
-
+    parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
+    
     # Training arguments
     parser.add_argument('--batch_size', type=int, default=1, help='The batch size to use for fine-tuning.')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=4, help='The number of gradient accumulation steps to use for fine-tuning.')
     parser.add_argument('--warmup_steps', type=int, default=10, help='The number of warmup steps to use for fine-tuning.')
-    parser.add_argument('--max_steps', type=int, default=500, help='The maximum number of steps to use for fine-tuning.')
+    parser.add_argument('--max_steps', type=int, default=200, help='The maximum number of steps to use for fine-tuning.')
     parser.add_argument('--learning_rate', type=float, default=2e-4, help='The learning rate to use for fine-tuning.')
     parser.add_argument('--fp16', type=str, default='True', help='Whether to use fp16.')
     parser.add_argument('--output_dir', type=str, default='outputs', help='The directory to save the fine-tuned model.')
@@ -84,7 +91,7 @@ if __name__ == '__main__':
 
     # Evaluation arguments
     parser.add_argument('--evaluation_strategy', type=str, default='steps', help='The evaluation strategy to use for fine-tuning.')
-    parser.add_argument('--eval_steps', type=int, default=25, help='The number of steps between evaluations.')
+    parser.add_argument('--eval_steps', type=int, default=10, help='The number of steps between evaluations.')
     parser.add_argument('--eval_on_test', type=str, default='True', help='Whether to evaluate the model on the test set after fine-tuning.')
     parser.add_argument('--compute_summarization_metrics', type=str, default='True', help='Whether to evaluate the model on ROUGE, BLEU, and BERTScore after fine-tuning.')
     parser.add_argument('--compute_qanda_metrics', type=str, default='False', help='Whether to evaluate the model on QA metrics like F1 and Exact Match (from SQUAD).')
@@ -93,24 +100,15 @@ if __name__ == '__main__':
     # Hub arguments
     parser.add_argument('--hub_upload', type=str, default='False', help='Whether to upload the model to the hub.')
     parser.add_argument('--hub_save_id', type=str, default='wolferobert3/opt-125m-peft-summarization', help='The name under which the mode will be saved on the hub.')
-    parser.add_argument('--save_steps', type=int, default=25, help='The number of steps between saving the model to the hub.')
+    parser.add_argument('--save_steps', type=int, default=10, help='The number of steps between saving the model to the hub.')
 
     # Parse arguments
     args = parser.parse_args()
-
-    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
-    def data_formatter(data: Mapping,
-                       input_field: str=args.input_col,
-                       target_field: str=args.target_col,
-                       start_prompt: str=args.start_prompt,
-                       end_prompt: str=args.end_prompt,
-                       suffix: str=args.suffix) -> list[str]:
-        """
-        Wraps the format_data_as_instructions function with the specified arguments.
-        """
-
-        return format_data_as_instructions(data, input_field, target_field, start_prompt, end_prompt, suffix)
-
+    
+    # Update the start and end prompts if using the model defaults
+    if args.use_model_prompt_defaults:
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        
     # HF Login
     if args.hf_token_var:
         hf_login(token=getenv(args.hf_token_var))
@@ -167,6 +165,24 @@ if __name__ == '__main__':
 
     logger.info(f'Loaded Model ID: {args.model_id}')
 
+    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
+    
+    # ==================
+    # chat format 
+    # ==================
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
+    transaction = """\n\nPlease summarize the following dialogue."""
+    def data_formatter(data: Mapping,
+                       tokenizer, 
+                       system_message: str=system_message,
+                       transaction: str=transaction) -> list[str]:
+        """
+        Wraps the format_data_as_instructions function with the specified arguments.
+        """
+
+        return format_data_as_instructions(data, tokenizer, system_message, transaction)
+
+    
     # Get LoRA model
     if args.lora == 'True':
 
@@ -227,6 +243,7 @@ if __name__ == '__main__':
             push_to_hub=args.hub_upload == 'True',
             save_steps=args.save_steps,
             report_to=['wandb'] if args.wandb_logging == 'True' else [],
+            load_best_model_at_end=True,
         )
 
     trainer = get_default_trainer(model, 
@@ -269,91 +286,78 @@ if __name__ == '__main__':
 
     # Evaluate model on ROUGE, BLEU, and BERTScore
     if args.compute_summarization_metrics == 'True':
-
+        
         model = trainer.model
-
         model.eval()
         model.to(args.device)
         model.config.use_cache = True
 
+        # ==================
+        # few-shot examples
+        # ==================
+        example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[0]['dialogue']}\n\n## Topic:\n{train_data[0]['section_header']}\n\n## Summary:"""
+        example_1_response = f"""{train_data[0]['section_text']}"""
+        example_2_question = f"""Here is another example example:\n\nExample 2:\n\n## Dialogue:\n{train_data[1]['dialogue']}\n\n## Topic:\n{train_data[1]['section_header']}\n\n## Summary:"""
+        example_2_response = f"""{train_data[1]['section_text']}"""
+        examples = {
+            'example_1_question':example_1_question,
+            'example_1_response':example_1_response,
+            'example_2_question':example_2_question,
+            'example_2_response':example_2_response,
+        }
+        
         print('Evaluating model on ROUGE, BLEU, and BERTScore...')
 
-        model_outputs, metrics = evaluate_hf_model(model,
-                                    tokenizer,
-                                    data['test'],
-                                    input_column=args.input_col,
-                                    target_column=args.target_col,
-                                    max_samples=len(data['test']),
-                                    start_prompt=args.start_prompt,
-                                    end_prompt=args.end_prompt,)
+        print('--- Zero-Shot Evaluation...')
+        model_outputs, metrics = evaluate_hf_model(model=model,
+                                                   tokenizer=tokenizer,
+                                                   data=data['test'],
+                                                   max_samples=len(data['test']),
+                                                   system_message=system_message,
+                                                   transaction=transaction,
+                                                   examples = examples,
+                                                   remove_suffix=args.suffix,
+                                                   shot = 0)
         
-        logger.info(f'Completed ROUGE, BLEU, and BERTScore evaluation')
+        logger.info(f'Zeroshot Results.')
         wandb.log(metrics)
+        for k, v in metrics.items(): print(f'{k}: {v}')
+        with open('{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.json', 'w') as f: json.dump(mapping, f)
+        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_zeroshot_outputs.npy", model_outputs)
 
-        # Print metrics
-        print('Finetuned Model Metrics:')
-
-        for k, v in metrics.items():
-            print(f'{k}: {v}')
-
-        # save model outputs
-        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_outputs.npy", model_outputs)
-
-    if args.compute_qanda_metrics == 'True':
-
-        model = trainer.model
-
-        model.eval()
-        model.to(args.device)
-        model.config.use_cache = True
-
-        print('Evaluating model on QA Metrics (Exact Match and F1 Score)...')
-
-        qa_metrics = evaluate_hf_model_qa(model, 
-                        tokenizer, 
-                        data['test'], 
-                        question_column=args.input_col,
-                        answer_column=args.target_col,
-                        max_samples=200)
-                        #len(data['test']))
+        print('--- One-Shot Evaluation...')
+        model_outputs, metrics = evaluate_hf_model(model=model,
+                                                   tokenizer=tokenizer,
+                                                   data=data['test'],
+                                                   max_samples=len(data['test']),
+                                                   system_message=system_message,
+                                                   transaction=transaction,
+                                                   examples = examples,
+                                                   remove_suffix=args.suffix,
+                                                   shot = 1)
         
-        logger.info('Completed QA Metrics evaluation')
-        wandb.log(qa_metrics)
+        logger.info(f'Oneshot Results.')
+        wandb.log(metrics)
+        for k, v in metrics.items(): print(f'{k}: {v}')
+        with open('{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.json', 'w') as f: json.dump(mapping, f)            
+        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_oneshot_outputs.npy", model_outputs)
 
-        # Print metrics
-        print('Finetuned Model QA Metrics:')
-
-        for k, v in qa_metrics.items():
-            print(f'{k}: {v}')
-
-    if args.compute_em_metrics == 'True':
-
-        model = trainer.model
-
-        model.eval()
-        model.to(args.device)
-        model.config.use_cache = True
-
-        print('Evaluating model on EM Metrics (F1, Precision, Accuracy, Recall)...')
-
-        em_metrics = evaluate_hf_model_em(model,
-                                          tokenizer,
-                                          data['test'],
-                                          input_column=args.input_col,
-                                          target_column=args.target_col,
-                                          max_samples=200,
-                                          start_prompt=args.start_prompt,
-                                          end_prompt=args.end_prompt,)
-        # len(data['test']))
-
-        logger.info('Completed EM Metrics evaluation')
-        wandb.log(em_metrics)
-
-        # Print metrics
-        print('Finetuned Model EM Metrics:')
-
-        for k, v in em_metrics.items():
-            print(f'{k}: {v}')
-
+        print('--- Two-Shot Evaluation...')
+        model_outputs, metrics = evaluate_hf_model(model=model,
+                                                   tokenizer=tokenizer,
+                                                   data=data['test'],
+                                                   max_samples=len(data['test']),
+                                                   system_message=system_message,
+                                                   transaction=transaction,
+                                                   examples = examples,
+                                                   remove_suffix=args.suffix,
+                                                   shot = 2)
+        
+        logger.info(f'Twoshot Results.')
+        wandb.log(metrics)
+        for k, v in metrics.items(): print(f'{k}: {v}')
+        with open('{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.json', 'w') as f: json.dump(mapping, f)            
+        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_twoshot_outputs.npy", model_outputs)
+        
     if args.wandb_logging == 'True':
         wandb.finish()
