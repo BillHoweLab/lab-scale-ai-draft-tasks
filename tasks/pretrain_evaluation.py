@@ -86,7 +86,7 @@ def main():
                                                shot = 0)
     print('ZeroShot Results:')
     for k, v in metrics.items():print(f'{k}: {v}')
-    with open('{args.model_id.split('/')[1]}_pretrained_model_zeroshot_outputs.json', 'w') as f: json.dump(metrics, f)
+    with open(f"{args.model_id.split('/')[1]}_pretrained_model_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
     np.save(f"{args.model_id.split('/')[1]}_pretrained_model_zeroshot_outputs.npy", model_outputs)
 
 
@@ -102,7 +102,7 @@ def main():
                                                shot = 1)
     print('OneShot Results:')
     for k, v in metrics.items():print(f'{k}: {v}')
-    with open('{args.model_id.split('/')[1]}_pretrained_model_oneshot_outputs.json', 'w') as f: json.dump(metrics, f)
+    with open(f"{args.model_id.split('/')[1]}_pretrained_model_oneshot_outputs.json", 'w') as f: json.dump(metrics, f)
     np.save(f"{args.model_id.split('/')[1]}_pretrained_model_oneshot_outputs.npy", model_outputs)
 
     print('--- TwoShot Evaluation...')
@@ -117,7 +117,7 @@ def main():
                                                shot = 2)
     print('Twoshot Results:')
     for k, v in metrics.items():print(f'{k}: {v}')
-    with open('{args.model_id.split('/')[1]}_pretrained_model_twoshot_outputs.json', 'w') as f: json.dump(metrics, f)
+    with open(f"{args.model_id.split('/')[1]}_pretrained_model_twoshot_outputs.json", 'w') as f: json.dump(metrics, f)
     np.save(f"{args.model_id.split('/')[1]}_pretrained_model_twoshot_outputs.npy", model_outputs)
 
 if __name__ == "__main__":
