@@ -167,19 +167,42 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
     """
     
     model_outputs = []
-
+    example_1_question = examples['example_1_question']
+    example_1_response = examples['example_1_response']
+    example_2_question = examples['example_2_question']
+    example_2_response = examples['example_2_response']
+                          
     # Iterate over the test set
     for idx in tqdm(range(max_samples), desc='Evaluating Hugging Face model'):
   
         # Generate and decode the output string, removing the special tokens and any suffixes
-        input_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
+        test_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
+        if shot == 0:
+            chat = [
+                {"role": "user", "content": system_message + transaction + test_data}
+            ]
+            input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+        elif shot == 1:
+            chat = [
+              {"role": "user", "content": system_message + example_1_question},
+              {"role": "assistant", "content": example_1_response},
+              {"role": "user", "content": transaction + test_data},    
+            ]
+            input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+        else:
+            chat = [
+              {"role": "user", "content": system_message + example_1_question},
+              {"role": "assistant", "content": example_1_response},
+              {"role": "user", "content": example_2_question},
+              {"role": "assistant", "content": example_2_response},    
+              {"role": "user", "content": transaction + test_data},    
+            ]
+            input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+
+        ## decoding
         decoded = generate_from_prompt(model=model, 
                                        tokenizer=tokenizer, 
                                        input_data=input_data, 
-                                       system_message=system_message, 
-                                       transaction=transaction, 
-                                       examples=examples,
-                                       shot=shot,
                                        max_tokens=max_tokens,
                                        min_new_tokens=min_new_tokens,
                                        max_new_tokens=max_new_tokens)
