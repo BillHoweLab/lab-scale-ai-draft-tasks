@@ -25,39 +25,6 @@ DEFAULT_SUMMARIZATION_PROMPTS = {
     'openai': ('Summarize the following: ', '\n Begin summary:'),
     }
 
-def generate_from_prompt(model: AutoModelForCausalLM, 
-                         tokenizer: AutoTokenizer, 
-                         input_data: str,
-                         max_tokens: int=1024,
-                         min_new_tokens: int=25,
-                         max_new_tokens: int=50) -> str:
-    """
-    Generate and decode output from a Transformers model using a prompt.
-    """
-
-    # Check whether input will not include the end prompt due to context window length, and manually truncate if necessary
-    tokenized = tokenizer.encode(input_data)
-
-    # If the input is too long, truncate it to the maximum length minus the length of the end prompt
-    #if len(tokenized) > max_tokens:
-    #  input = tokenizer.decode(tokenized[:max_tokens-len(tokenizer.encode(end_prompt))-1], skip_special_tokens=True) + end_prompt
-
-    # Calculate the position of the start of the output string
-    start_decode = len(tokenizer.encode(input_data, truncation=True, max_length=max_tokens))
-
-    # Encode the input string
-    input_ids = tokenizer(input_data, return_tensors='pt', truncation=True, max_length=max_tokens).to(model.device)
-
-    # Generate text from prompt
-    with torch.no_grad():
-      output = model.generate(**input_ids, max_new_tokens=max_new_tokens, min_new_tokens=min_new_tokens)
-    
-    # Decode the output string, removing the special tokens and any suffixes
-    decoded = tokenizer.decode(output[0][start_decode:])
-
-    return decoded
-
-
 def compute_summarization_metrics(predictions: Iterable, 
                             references: Iterable,
                             rouge: bool=True,
@@ -113,6 +80,38 @@ def compute_summarization_metrics(predictions: Iterable,
 
     return metric_results
 
+def generate_from_prompt(model: AutoModelForCausalLM, 
+                         tokenizer: AutoTokenizer, 
+                         input_data: str,
+                         max_tokens: int=1024,
+                         min_new_tokens: int=25,
+                         max_new_tokens: int=50) -> str:
+    """
+    Generate and decode output from a Transformers model using a prompt.
+    """
+
+    # Check whether input will not include the end prompt due to context window length, and manually truncate if necessary
+    tokenized = tokenizer.encode(input_data)
+
+    # If the input is too long, truncate it to the maximum length minus the length of the end prompt
+    #if len(tokenized) > max_tokens:
+    #  input = tokenizer.decode(tokenized[:max_tokens-len(tokenizer.encode(end_prompt))-1], skip_special_tokens=True) + end_prompt
+
+    # Calculate the position of the start of the output string
+    start_decode = len(tokenizer.encode(input_data, truncation=True, max_length=max_tokens))
+
+    # Encode the input string
+    input_ids = tokenizer(input_data, return_tensors='pt', truncation=True, max_length=max_tokens).to(model.device)
+
+    # Generate text from prompt
+    with torch.no_grad():
+      output = model.generate(**input_ids, max_new_tokens=max_new_tokens, min_new_tokens=min_new_tokens)
+    
+    # Decode the output string, removing the special tokens and any suffixes
+    decoded = tokenizer.decode(output[0][start_decode:])
+
+    return decoded
+                             
 def evaluate_hf_model(model: AutoModelForCausalLM, 
                       tokenizer: AutoTokenizer, 
                       data: Iterable,
