@@ -19,7 +19,7 @@ MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
     'llama-2': '</s>',
-    'falcon': '<|im_end|>',
+    'falcon': '<|endoftext|>',
     'opt-finetune': '</s>',
 }
 
