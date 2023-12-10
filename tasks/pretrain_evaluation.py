@@ -93,7 +93,7 @@ def main():
     print('--- OneShot Evaluation...')
     model_outputs, metrics = evaluate_hf_model(model=model,
                                                tokenizer=tokenizer,
-                                               dat=test_data,
+                                               data=test_data,
                                                max_samples=len(test_data),
                                                system_message=system_message,
                                                transaction=transaction,
