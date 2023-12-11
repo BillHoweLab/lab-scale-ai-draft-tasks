@@ -22,7 +22,7 @@ MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
     'llama-2': '</s>',
-    'falcon': '<|im_end|>',
+    'falcon': '<|endoftext|>',
     'opt-finetune': '</s>',
 }
 
@@ -73,8 +73,8 @@ if __name__ == '__main__':
     parser.add_argument('--wandb_api_var', type=str, default='WANDB_API_KEY', help='Name of the WandB API key variable name.')
 
     # Prompt arguments
-    #parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n', help='The start prompt to add to the beginning of the input text.')
-    #parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary:', help='The end prompt to add to the end of the input text.')
+    parser.add_argument('--start_prompt', type=str, default='Please summarize the following conversation:\n\n', help='The start prompt to add to the beginning of the input text.')
+    parser.add_argument('--end_prompt', type=str, default='\n\nBegin summary:', help='The end prompt to add to the end of the input text.')
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=974, help='The maximum sequence length to use for fine-tuning.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     # ==================
     # chat format 
     # ==================
-    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
     def data_formatter(data: Mapping,
                        tokenizer, 
