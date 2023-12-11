@@ -10,7 +10,6 @@ import datasets
 import argparse
 import wandb
 
-from transformers import AutoTokenizer
 from transformers import TrainingArguments
 from huggingface_hub import login as hf_login
 from os import path, mkdir, getenv
@@ -174,7 +173,6 @@ if __name__ == '__main__':
     system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
     def data_formatter(data: Mapping,
-                       tokenizer: AutoTokenizer, 
                        system_message: str=system_message,
                        transaction: str=transaction) -> list[str]:
         """
