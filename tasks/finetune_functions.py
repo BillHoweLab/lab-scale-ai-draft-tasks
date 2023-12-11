@@ -40,7 +40,7 @@ DEFAULT_TRAINING_ARGS = TrainingArguments(
     )
 
 def format_data_as_instructions(data: Mapping, 
-                                tokenizer, 
+                                tokenizer: AutoTokenizer, 
                                 system_message: str='###', 
                                 transaction: str='###') -> list[str]:
     """
