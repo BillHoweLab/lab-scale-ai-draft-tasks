@@ -9,8 +9,9 @@ from cdp_backend.database import models as cdp_db_models
 from cdp_backend.pipeline.transcript_model import Transcript
 from cdp_data import CDPInstances
 from cdp_data import datasets as cdp_datasets
+from cdp_data.utils import connect_to_infrastructure
 from tqdm import tqdm
-from tqdm.contrib.concurrent import process_map
+from tqdm.contrib.concurrent import process_map, thread_map
 
 ###############################################################################
 
@@ -100,13 +101,13 @@ def _get_minutes_items_for_each_meeting(
 
 @app.command()
 def minutes_items(
-    start_date: str = "2022-01-01",
-    end_date: str = "2022-08-01",
+    start_date: str = "2020-01-01",
+    end_date: str = "2023-06-01",
     max_duration_meeting_minutes: int = 120,
-    include_votes: bool = False,
+    # include_votes: bool = False,
     debug: bool = False,
     supress_other_module_logging: bool = True,
-) -> str:
+) -> None:
     _setup_logging(
         debug=debug,
         supress_other_module_logging=supress_other_module_logging,
@@ -134,7 +135,7 @@ def minutes_items(
     # Pull transcripts for councils of interest
     transcript_dataframes = []
     log.info("Getting base meeting dataset for each council.")
-    for council in tqdm(councils, desc="Processing councils"):
+    for council in tqdm(councils, desc="Processing councils", leave=False):
         council_data = cdp_datasets.get_session_dataset(
             council,
             start_datetime=start_date,
@@ -189,27 +190,52 @@ def minutes_items(
         f"{len(transcripts_under_max_duration)}"
     )
 
-    # Get minutes items for each meeting
-    log.info("Getting minutes items for each meeting.")
-    transcripts_under_max_duration[
-        "minutes_items"
-    ] = transcripts_under_max_duration.event_id.apply(
-        _get_minutes_items_for_each_meeting,
+    # Ensure drop that there is a transcript
+    transcripts_under_max_duration = transcripts_under_max_duration.dropna(
+        subset=["transcript"],
     )
+
+    # Get minutes items for each meeting
+    # In order to use thread_map, we need to do this with group_by council
+    # so that we can connect to the correct infrastructure
+    t_with_mi_dfs = []
+    for council_slug, group in tqdm(
+        transcripts_under_max_duration.groupby("council"),
+        desc="Getting minutes items for each council",
+        leave=False,
+    ):
+        # Connect to infrastructure
+        connect_to_infrastructure(council_slug)
+
+        # Make copy
+        t_with_mi_df = group.copy()
+
+        # Get minutes items for each meeting
+        t_with_mi_df["minutes_items"] = thread_map(
+            _get_minutes_items_for_each_meeting,
+            t_with_mi_df["event_id"],
+            desc="Getting minutes items for each meeting",
+            leave=False,
+        )
+
+        # Append to dfs list
+        t_with_mi_dfs.append(t_with_mi_df)
+
+    # Concat
+    transcripts_with_mi = pd.concat(t_with_mi_dfs, ignore_index=True)
 
     # Filter out meetings with no minutes items
     log.info("Filtering out meetings with no minutes items.")
-    transcripts_with_minutes_items = transcripts_under_max_duration.dropna(
+    transcripts_with_mi = transcripts_with_mi.dropna(
         axis=0, subset=["minutes_items"]
     ).copy()
     log.debug(
-        f"Number of transcripts with minutes items: "
-        f"{len(transcripts_with_minutes_items)}"
+        f"Number of transcripts with minutes items: " f"{len(transcripts_with_mi)}"
     )
 
     # Format into constructed dataset
     log.info("Formatting into constructed dataset.")
-    transcripts_with_minutes_items = transcripts_with_minutes_items[
+    transcripts_with_mi = transcripts_with_mi[
         [
             "transcript",
             "minutes_items",
@@ -217,7 +243,7 @@ def minutes_items(
             "key",
         ]
     ]
-    transcripts_with_minutes_items = transcripts_with_minutes_items.rename(
+    transcripts_with_mi = transcripts_with_mi.rename(
         columns={
             "key": "meta_session_key",
             "council": "meta_council",
@@ -225,15 +251,16 @@ def minutes_items(
     )
 
     # Store minutes items dict as JSON string
-    transcripts_with_minutes_items[
-        "minutes_items"
-    ] = transcripts_with_minutes_items.minutes_items.apply(json.dumps)
+    transcripts_with_mi["minutes_items"] = transcripts_with_mi.minutes_items.apply(
+        json.dumps
+    )
 
     # Save to disk
     log.info("Saving to disk.")
-    transcripts_with_minutes_items.to_parquet("example-dataset.parquet")
-
-    return "example-dataset.parquet"
+    transcripts_with_mi = transcripts_with_mi.reset_index(drop=True)
+    transcripts_with_mi.to_parquet(
+        "councils-in-action-minutes-items-prediction.parquet"
+    )
 
 
 ###############################################################################
