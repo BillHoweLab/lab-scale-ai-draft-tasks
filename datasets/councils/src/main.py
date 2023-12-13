@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from functools import partial
 from typing import Any
 
@@ -10,6 +11,9 @@ from cdp_backend.pipeline.transcript_model import Transcript
 from cdp_data import CDPInstances
 from cdp_data import datasets as cdp_datasets
 from cdp_data.utils import connect_to_infrastructure
+from datasets import Dataset, DatasetDict  # type: ignore
+from dotenv import load_dotenv
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
 from tqdm.contrib.concurrent import process_map, thread_map
 
@@ -87,7 +91,11 @@ def _get_minutes_items_for_each_meeting(
             "event_ref",
             "==",
             f"event/{event_id}",
-        ).fetch()
+        )
+        .order(
+            "index",
+        )
+        .fetch()
     )
 
     # No emis return None
@@ -100,11 +108,10 @@ def _get_minutes_items_for_each_meeting(
 
 
 @app.command()
-def minutes_items(
+def get_minutes_items(
     start_date: str = "2020-01-01",
     end_date: str = "2023-06-01",
     max_duration_meeting_minutes: int = 120,
-    # include_votes: bool = False,
     debug: bool = False,
     supress_other_module_logging: bool = True,
 ) -> None:
@@ -260,6 +267,76 @@ def minutes_items(
     transcripts_with_mi = transcripts_with_mi.reset_index(drop=True)
     transcripts_with_mi.to_parquet(
         "councils-in-action-minutes-items-prediction.parquet"
+    )
+
+
+@app.command()
+def upload_minutes_items(
+    debug: bool = False,
+    supress_other_module_logging: bool = True,
+) -> None:
+    _setup_logging(
+        debug=debug,
+        supress_other_module_logging=supress_other_module_logging,
+    )
+
+    # Read in dataset
+    df = pd.read_parquet("councils-in-action-minutes-items-prediction.parquet")
+
+    # Split out holdout councils
+    # Holdout councils are those that we will not use for training
+    # We will use them for validation
+    holdout_councils = [
+        CDPInstances.Milwaukee,
+        CDPInstances.KingCounty,
+        CDPInstances.Boston,
+    ]
+
+    # Filter out holdout councils
+    valid_set = df.loc[df.meta_council.isin(holdout_councils)].copy()
+    train_set = df.loc[~df.meta_council.isin(holdout_councils)].copy()
+
+    # Create splits
+    train_set, test_set = train_test_split(
+        train_set,
+        test_size=0.2,
+        random_state=42,
+        stratify=train_set["meta_council"],
+    )
+
+    # Print ds info
+    # print the overall split sizes
+    # then print the counts of meta council for train and test sets
+    print(
+        f"Split sizes, "
+        f"train: {len(train_set)} "
+        f"({round(len(train_set) / len(df), 3)}); "
+        f"test: {len(test_set)} "
+        f"({round(len(test_set) / len(df), 3)}); "
+        f"valid: {len(valid_set)} "
+        f"({round(len(valid_set) / len(df), 3)})"
+    )
+
+    # Create dataset dict
+    dataset_dict = DatasetDict(
+        {
+            "train": Dataset.from_pandas(train_set, preserve_index=False),
+            "test": Dataset.from_pandas(test_set, preserve_index=False),
+            "valid": Dataset.from_pandas(valid_set, preserve_index=False),
+        }
+    )
+
+    # Shuffle
+    dataset_dict = dataset_dict.shuffle(seed=42)
+
+    # Load env and get HF_TOKEN
+    load_dotenv()
+    token = os.environ["HF_TOKEN"]
+
+    # Push to hub
+    dataset_dict.push_to_hub(
+        "evamaxfield/councils-in-action-minutes-items-prediction",
+        token=token,
     )
 
 
