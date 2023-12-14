@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/medsum')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--nshot', type=str, default='zero', help='The slice of the test dataset to use for fine-tuning.')
+    parser.add_argument('--pretrain', type=str, default='True', help='The slice of the test dataset to use for fine-tuning.')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
     parser.add_argument('--hf_token_var', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
     args = parser.parse_args()
@@ -91,9 +92,14 @@ def main():
                                                remove_suffix=args.suffix,
                                                shot = args.nshot)
     print(f'{args.nshot} Results:')
-    for k, v in metrics.items():print(f'{k}: {v}')
-    with open(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
-    np.save(f"{results/args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.npy", model_outputs)
+    if args.pretrain == 'True':        
+        for k, v in metrics.items():print(f'{k}: {v}')
+        with open(f"results/{args.model_id.split('/')[1]}_pretrained_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
+        np.save(f"{results/args.model_id.split('/')[1]}_pretrained_model_{args.nshot}shot_outputs.npy", model_outputs)
+    else:
+        for k, v in metrics.items():print(f'{k}: {v}')
+        with open(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
+        np.save(f"{results/args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.npy", model_outputs)
 
 if __name__ == "__main__":
     main()
