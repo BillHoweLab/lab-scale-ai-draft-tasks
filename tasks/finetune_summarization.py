@@ -105,6 +105,12 @@ if __name__ == '__main__':
 
     # Parse arguments
     args = parser.parse_args()
+
+    # change saving directory
+    args.peft_save_dir = 'peft_model'+args.use_model_prompt_defaults
+    args.log_dir = 'logs'+args.use_model_prompt_defaults
+    args.save_dir = 'finetuned_model'+args.args.use_model_prompt_defaults
+    args.run_name = 'peft_model'+args.use_model_prompt_defaults
     
     # Update the start and end prompts if using the model defaults
     if args.use_model_prompt_defaults:
