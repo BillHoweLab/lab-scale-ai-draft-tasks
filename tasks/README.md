@@ -5,7 +5,7 @@ python finetune_summarization.py --model_id tiiuae/falcon-7b-instruct --wandb_na
 ```
 
 ```
-python pretrain_evaluation.py --model_id tiiuae/falcon-7b-instruct --use_model_prompt_defaults falcon --dataset beanham/medsum
+python evaluate_summarization.py --model_id tiiuae/falcon-7b-instruct --use_model_prompt_defaults falcon --dataset beanham/medsum --nshot zero --pretrain True
 ```
 
 | Task                   | Llama-2-Chat | Mistral-7B | Falcon | GPT-3.5T | GPT-4 |
