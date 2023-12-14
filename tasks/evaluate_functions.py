@@ -116,7 +116,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                       tokenizer: AutoTokenizer, 
                       data: Iterable,
                       examples,
-                      shot: int=0,
+                      shot: str='zero',
                       max_samples: int=None,
                       system_message: str='###',
                       transaction: str='###',
@@ -142,12 +142,12 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
   
         # Generate and decode the output string, removing the special tokens and any suffixes
         test_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
-        if shot == 0:
+        if shot == 'zero':
             chat = [
                 {"role": "user", "content": system_message + transaction + test_data}
             ]
             input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-        elif shot == 1:
+        elif shot == 'one':
             chat = [
               {"role": "user", "content": system_message + example_1_question},
               {"role": "assistant", "content": example_1_response},
