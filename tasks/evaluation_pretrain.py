@@ -36,7 +36,7 @@ def main():
     parser.add_argument('--dataset', type=str, default='beanham/medsum')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
-    parser.add_argument('--test_slice', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
+    parser.add_argument('--nshot', type=str, default='zero', help='The slice of the test dataset to use for fine-tuning.')
     parser.add_argument('--hf_token_var', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
     args = parser.parse_args()
     
@@ -81,8 +81,6 @@ def main():
     # inference
     #--------------
     model.eval()
-    
-    print('--- ZeroShot Evaluation...')
     model_outputs, metrics = evaluate_hf_model(model=model,
                                                tokenizer=tokenizer,
                                                data=test_data,
@@ -91,42 +89,11 @@ def main():
                                                transaction=transaction,
                                                examples = examples,
                                                remove_suffix=args.suffix,
-                                               shot = 0)
-    print('ZeroShot Results:')
+                                               shot = args.nshot)
+    print(f'{args.nshot} Results:')
     for k, v in metrics.items():print(f'{k}: {v}')
-    with open(f"results/{args.model_id.split('/')[1]}_pretrained_model_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
-    np.save(f"{results/args.model_id.split('/')[1]}_pretrained_model_zeroshot_outputs.npy", model_outputs)
-
-
-    print('--- OneShot Evaluation...')
-    model_outputs, metrics = evaluate_hf_model(model=model,
-                                               tokenizer=tokenizer,
-                                               data=test_data,
-                                               max_samples=len(test_data),
-                                               system_message=system_message,
-                                               transaction=transaction,
-                                               examples = examples,
-                                               remove_suffix=args.suffix,
-                                               shot = 1)
-    print('OneShot Results:')
-    for k, v in metrics.items():print(f'{k}: {v}')
-    with open(f"results/{args.model_id.split('/')[1]}_pretrained_model_oneshot_outputs.json", 'w') as f: json.dump(metrics, f)
-    np.save(f"results/{args.model_id.split('/')[1]}_pretrained_model_oneshot_outputs.npy", model_outputs)
-
-    print('--- TwoShot Evaluation...')
-    model_outputs, metrics = evaluate_hf_model(model=model,
-                                               tokenizer=tokenizer,
-                                               data=test_data,
-                                               max_samples=len(test_data),
-                                               system_message=system_message,
-                                               transaction=transaction,
-                                               examples = examples,
-                                               remove_suffix=args.suffix,
-                                               shot = 2)
-    print('Twoshot Results:')
-    for k, v in metrics.items():print(f'{k}: {v}')
-    with open(f"results/{args.model_id.split('/')[1]}_pretrained_model_twoshot_outputs.json", 'w') as f: json.dump(metrics, f)
-    np.save(f"results/{args.model_id.split('/')[1]}_pretrained_model_twoshot_outputs.npy", model_outputs)
+    with open(f"results/{args.model_id.split('/')[1]}_pretrained_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
+    np.save(f"{results/args.model_id.split('/')[1]}_pretrained_model_{args.nshot}shot_outputs.npy", model_outputs)
 
 if __name__ == "__main__":
     main()
