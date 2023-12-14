@@ -146,14 +146,12 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
             chat = [
                 {"role": "user", "content": system_message + transaction + test_data}
             ]
-            input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
         elif shot == 'one':
             chat = [
               {"role": "user", "content": system_message + example_1_question},
               {"role": "assistant", "content": example_1_response},
               {"role": "user", "content": transaction + test_data},    
             ]
-            input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
         else:
             chat = [
               {"role": "user", "content": system_message + example_1_question},
@@ -162,8 +160,9 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
               {"role": "assistant", "content": example_2_response},    
               {"role": "user", "content": transaction + test_data},    
             ]
-            input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
-
+            
+        input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+        
         ## decoding
         decoded = generate_from_prompt(model=model, 
                                        tokenizer=tokenizer, 
