@@ -250,6 +250,7 @@ if __name__ == '__main__':
             save_steps=args.save_steps,
             report_to=['wandb'] if args.wandb_logging == 'True' else [],
             load_best_model_at_end=True,
+            save_total_limit = 1
         )
 
     trainer = get_default_trainer(model, 
