@@ -53,7 +53,7 @@ def format_data_as_instructions(data: Mapping,
     for i in tqdm(range(len(data['dialogue'])), desc='Formatting data'):
         
         test_question = f"""\n\n## Dialogue:\n{data['dialogue'][i]}\n\n## Topic:\n{data['section_header'][i]}\n\n## Summary:"""
-        test_response = f"""{data['section_text'][i]}\n"""
+        test_response = f"""{data['section_text'][i]}"""
         chat = [
           {"role": "user", "content": system_message + transaction + test_question},
           {"role": "assistant", "content": test_response},
