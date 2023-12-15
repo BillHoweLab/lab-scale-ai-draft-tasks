@@ -55,7 +55,7 @@ def main():
     test_data = load_dataset(args.dataset, split='test')
 
     index_1 = 0
-    index_2 = 2
+    index_2 = 1
     system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
     example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[index_1]['dialogue']}\n\n## Topic:\n{train_data[index_1]['section_header']}\n\n## Summary:"""
