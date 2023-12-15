@@ -163,10 +163,10 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
             
         input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
         if 'falcon' in tokenizer.name_or_path:
-            text = text.replace('user', 'User:')
-            text = text.replace('assistant', 'Assistant:')
-            text = text.replace('<|im_start|>', '')
-            text = text.replace('<|im_end|>', '')
+            input_data = input_data.replace('user', 'User:')
+            input_data = input_data.replace('assistant', 'Assistant:')
+            input_data = input_data.replace('<|im_start|>', '')
+            input_data = input_data.replace('<|im_end|>', '')
             
         ## decoding
         decoded = generate_from_prompt(model=model, 
