@@ -94,12 +94,12 @@ def main():
     print(f'{args.nshot} Results:')
     if args.pretrain == 'True':        
         for k, v in metrics.items():print(f'{k}: {v}')
-        with open(f"results/{args.model_id.split('/')[1]}_pretrained_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
-        np.save(f"results/{args.model_id.split('/')[1]}_pretrained_model_{args.nshot}shot_outputs.npy", model_outputs)
+        with open(f"results/{args.use_model_prompt_defaults}_pretrained_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
+        np.save(f"results/{args.use_model_prompt_defaults}_pretrained_model_{args.nshot}shot_outputs.npy", model_outputs)
     else:
         for k, v in metrics.items():print(f'{k}: {v}')
-        with open(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
-        np.save(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.npy", model_outputs)
+        with open(f"results/{args.use_model_prompt_defaults}_finetuned_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
+        np.save(f"results/{args.use_model_prompt_defaults}_finetuned_model_{args.nshot}shot_outputs.npy", model_outputs)
 
 if __name__ == "__main__":
     main()
