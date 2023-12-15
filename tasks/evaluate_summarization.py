@@ -19,8 +19,7 @@ MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
     'llama-2': '</s>',
-    'falcon': '<|endoftext|>',
-    'opt-finetune': '</s>',
+    'falcon': '<|endoftext|>'
 }
 
 #-----------------------
@@ -54,19 +53,27 @@ def main():
     validation_data = load_dataset(args.dataset, split='validation')
     test_data = load_dataset(args.dataset, split='test')
 
-    index_1 = 0
-    index_2 = 1
+    #---------------------------
+    # prepara prompting examples
+    #---------------------------
+    index_1 = 0 ## comprehensive example
+    index_2 = 1 ## negation
+    index_3 = 5 ## short example
     system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
-    example_1_question = f"""\n\nExample 1:\n\n## Dialogue:\n{train_data[index_1]['dialogue']}\n\n## Topic:\n{train_data[index_1]['section_header']}\n\n## Summary:"""
-    example_1_response = f"""{train_data[index_1]['section_text']}"""
-    example_2_question = f"""Here is another example example:\n\nExample 2:\n\n## Dialogue:\n{train_data[index_2]['dialogue']}\n\n## Topic:\n{train_data[index_2]['section_header']}\n\n## Summary:"""
-    example_2_response = f"""{train_data[index_2]['section_text']}"""
+    example_1_question = f"""\n\nExample 1:\n\n## Content:\n{validation_data[index_1]['dialogue']}\n\n## Topic:\n{validation_data[index_1]['section_header']}\n\n## Summary:"""
+    example_1_response = f"""{validation_data[index_1]['section_text']}"""
+    example_2_question = f"""\n\nExample 2:\n\n## Content:\n{validation_data[index_2]['dialogue']}\n\n## Topic:\n{validation_data[index_2]['section_header']}\n\n## Summary:"""
+    example_2_response = f"""{validation_data[index_2]['section_text']}"""
+    example_3_question = f"""\n\nExample 3:\n\n## Content:\n{validation_data[index_3]['dialogue']}\n\n## Topic:\n{validation_data[index_3]['section_header']}\n\n## Summary:"""
+    example_3_response = f"""{validation_data[index_3]['section_text']}"""
     examples = {
         'example_1_question':example_1_question,
         'example_1_response':example_1_response,
         'example_2_question':example_2_question,
         'example_2_response':example_2_response,
+        'example_3_question':example_3_question,
+        'example_3_response':example_3_response,        
     }
         
     #-------------------
