@@ -129,9 +129,9 @@ if __name__ == '__main__':
                    config=args)
     
     # Create directories if they do not exist
-    if not path.exists(args.peft_save_dir):
-        mkdir(args.peft_save_dir)
-        print(f'Created directory {args.peft_save_dir}')
+    #if not path.exists(args.peft_save_dir):
+    #    mkdir(args.peft_save_dir)
+    #    print(f'Created directory {args.peft_save_dir}')
     
     if not path.exists(args.log_dir):
         mkdir(args.log_dir)
