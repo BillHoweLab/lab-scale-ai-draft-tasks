@@ -240,7 +240,7 @@ if __name__ == '__main__':
             learning_rate=args.learning_rate,
             fp16=args.fp16 == 'True',
             logging_steps=args.logging_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
-            output_dir='outputs',
+            output_dir=args.output_dir,
             optim=args.optim,
             use_mps_device=args.use_mps_device == 'True',
             log_level=args.log_level,
