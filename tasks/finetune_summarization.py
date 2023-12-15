@@ -107,7 +107,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # change saving directory
-    args.save_dir = 'finetuned_model_'+args.args.use_model_prompt_defaults
+    args.save_dir = 'finetuned_model_'+args.use_model_prompt_defaults
     args.peft_save_dir = 'peft_model_'+args.use_model_prompt_defaults
     args.log_dir = 'logs_'+args.use_model_prompt_defaults
     args.output_dir = 'outputs_'+args.use_model_prompt_defaults
