@@ -52,7 +52,7 @@ def main():
     print('Getting data...')
     train_data = load_dataset(args.dataset, split='train')
     validation_data = load_dataset(args.dataset, split='validation')
-    test_data = load_dataset(args.dataset, split=args.test_slice)
+    test_data = load_dataset(args.dataset, split='test')
 
     index_1 = 0
     index_2 = 2
