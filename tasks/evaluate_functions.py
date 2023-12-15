@@ -14,17 +14,6 @@ from typing import Iterable
 from tqdm import tqdm
 from os import path, makedirs, getenv
 
-# Set the default summarization prompts for each model
-DEFAULT_SUMMARIZATION_PROMPTS = {
-    'llama-2-base': ('### Summarize: ', '### Begin summary:'),
-    'llama-2-chat': ('<s>[INST] <<SYS>> \nYou are a helpful assistant.\n<</SYS>>\n\nSummarize the following: ', ' [/INST]'),
-    'gpt2': ('### Summarize: ', '### Begin summary:'),
-    'mistral-base': ('### Summarize: ', '### Begin summary:'),
-    'mistral-instruct': ('<s>[INST] Summarize the following: ', ' [/INST]'),
-    'opt': ('### Summarize: ', '### Begin summary:'),
-    'openai': ('Summarize the following: ', '\n Begin summary:'),
-    }
-
 def compute_summarization_metrics(predictions: Iterable, 
                             references: Iterable,
                             rouge: bool=True,
@@ -136,35 +125,86 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
     example_1_response = examples['example_1_response']
     example_2_question = examples['example_2_question']
     example_2_response = examples['example_2_response']
+    example_3_question = examples['example_3_question']
+    example_3_response = examples['example_3_response']                          
                           
     # Iterate over the test set
     for idx in tqdm(range(max_samples), desc='Evaluating Hugging Face model'):
   
         # Generate and decode the output string, removing the special tokens and any suffixes
-        test_data = f"""\n\n## Dialogue:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
-        if shot == 'zero':
-            chat = [
-                {"role": "user", "content": system_message + transaction + test_data}
-            ]
-        elif shot == 'one':
-            chat = [
-              {"role": "user", "content": system_message + example_1_question},
-              {"role": "assistant", "content": example_1_response},
-              {"role": "user", "content": transaction + test_data},    
-            ]
+        test_data = f"""\n\n## Content:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
+        
+        if 'falcon' not in tokenizer.name_or_path:
+            if shot == 'zero':
+                chat = [
+                    {"role": "user", "content": system_message + transaction + test_data}
+                ]
+            elif shot == 'one':
+                chat = [
+                    {"role": "user", "content": system_message + example_1_question},
+                    {"role": "assistant", "content": example_1_response},
+                    {"role": "user", "content": transaction + test_data},    
+                ]
+            elif shot == 'two':
+                chat = [
+                    {"role": "user", "content": system_message + example_1_question},
+                    {"role": "assistant", "content": example_1_response},
+                    {"role": "user", "content": example_2_question},
+                    {"role": "assistant", "content": example_2_response},    
+                    {"role": "user", "content": transaction + test_data},    
+                ]
+            else:
+                chat = [
+                    {"role": "user", "content": system_message + example_1_question},
+                    {"role": "assistant", "content": example_1_response},
+                    {"role": "user", "content": example_2_question},
+                    {"role": "assistant", "content": example_2_response},
+                    {"role": "user", "content": example_3_question},
+                    {"role": "assistant", "content": example_3_response},                    
+                    {"role": "user", "content": transaction + test_data},    
+                ]                
         else:
-            chat = [
-              {"role": "user", "content": system_message + example_1_question},
-              {"role": "assistant", "content": example_1_response},
-              {"role": "user", "content": example_2_question},
-              {"role": "assistant", "content": example_2_response},    
-              {"role": "user", "content": transaction + test_data},    
-            ]
-            
+            if shot == 'zero':
+                chat = [
+                    {"role": "user", "content": system_message+
+                                                transaction+
+                                                test_data}
+                ]
+            elif shot == 'one':
+                chat = [
+                    {"role": "user", "content": system_message+
+                                                example_1_question+
+                                                example_1_response+
+                                                transaction+
+                                                test_data}, 
+                ]
+            elif shot == 'two':
+                chat = [
+                    {"role": "user", "content": system_message+
+                                                example_1_question+
+                                                example_1_response+
+                                                example_2_question+
+                                                example_2_response+                     
+                                                transaction+
+                                                test_question},   
+                ]
+            else:
+                chat = [
+                    {"role": "user", "content": system_message+
+                                                example_1_question+
+                                                example_1_response+
+                                                example_2_question+
+                                                example_2_response+  
+                                                example_3_question+
+                                                example_3_response+                       
+                                                transaction+
+                                                test_question},   
+                ]
         input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
         if 'falcon' in tokenizer.name_or_path:
             input_data = input_data.replace('user', 'User:')
             input_data = input_data.replace('assistant', 'Assistant:')
+            input_data = input_data.replace('Assistant:!', 'assistant!')
             input_data = input_data.replace('<|im_start|>', '')
             input_data = input_data.replace('<|im_end|>', '')
             
