@@ -178,7 +178,7 @@ if __name__ == '__main__':
     # ==================
     # chat format 
     # ==================
-    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with each dialogue, as well as the topic for that dialogue. """
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
     
     def data_formatter(data: Mapping,
