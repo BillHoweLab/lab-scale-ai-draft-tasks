@@ -132,18 +132,18 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
     for idx in tqdm(range(max_samples), desc='Evaluating Hugging Face model'):
   
         # Generate and decode the output string, removing the special tokens and any suffixes
-        test_data = f"""\n\n## Content:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
+        test_question = f"""\n\n## Content:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
         
         if 'falcon' not in tokenizer.name_or_path:
             if shot == 'zero':
                 chat = [
-                    {"role": "user", "content": system_message + transaction + test_data}
+                    {"role": "user", "content": system_message + transaction + test_question}
                 ]
             elif shot == 'one':
                 chat = [
                     {"role": "user", "content": system_message + example_1_question},
                     {"role": "assistant", "content": example_1_response},
-                    {"role": "user", "content": transaction + test_data},    
+                    {"role": "user", "content": transaction + test_question},    
                 ]
             elif shot == 'two':
                 chat = [
@@ -151,7 +151,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                     {"role": "assistant", "content": example_1_response},
                     {"role": "user", "content": example_2_question},
                     {"role": "assistant", "content": example_2_response},    
-                    {"role": "user", "content": transaction + test_data},    
+                    {"role": "user", "content": transaction + test_question},    
                 ]
             else:
                 chat = [
@@ -161,14 +161,14 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                     {"role": "assistant", "content": example_2_response},
                     {"role": "user", "content": example_3_question},
                     {"role": "assistant", "content": example_3_response},                    
-                    {"role": "user", "content": transaction + test_data},    
+                    {"role": "user", "content": transaction + test_question},    
                 ]                
         else:
             if shot == 'zero':
                 chat = [
                     {"role": "user", "content": system_message+
                                                 transaction+
-                                                test_data}
+                                                test_question}
                 ]
             elif shot == 'one':
                 chat = [
@@ -176,7 +176,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                                                 example_1_question+
                                                 example_1_response+
                                                 transaction+
-                                                test_data}, 
+                                                test_question}, 
                 ]
             elif shot == 'two':
                 chat = [
