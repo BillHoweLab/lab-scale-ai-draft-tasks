@@ -64,7 +64,7 @@ if __name__ == '__main__':
     # Logging arguments
     parser.add_argument('--log_dir', type=str, default='logs', help='The directory to save the log file.')
     parser.add_argument('--log_level', type=str, default='info', help='The log level to use for fine-tuning.')
-    parser.add_argument('--logging_first_step', type=str, default='True', help='Whether to log the first step.')
+    parser.add_argument('--logging_first_step', type=str, default='False', help='Whether to log the first step.')
     parser.add_argument('--logging_steps', type=int, default=1, help='The number of steps between logging.')
     parser.add_argument('--run_name', type=str, default='peft_finetune', help='The name of the run, for logging.')
 
@@ -251,7 +251,8 @@ if __name__ == '__main__':
             push_to_hub=args.hub_upload == 'True',
             save_steps=args.save_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
             report_to=['wandb'] if args.wandb_logging == 'True' else [],
-            load_best_model_at_end=True
+            load_best_model_at_end=True,
+            num_train_epochs=1,
         )
 
     trainer = get_default_trainer(model, 
