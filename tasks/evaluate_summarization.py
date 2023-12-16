@@ -90,6 +90,7 @@ def main():
     #--------------
     #for nshot in ['zero', 'one', 'two', 'three']:
     for nshot in ['two', 'three']:
+        print(f"{nshot}shot...")
         args.nshot = nshot
         model.eval()
         model_outputs, metrics = evaluate_hf_model(model=model,
