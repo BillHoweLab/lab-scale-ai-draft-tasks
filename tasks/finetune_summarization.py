@@ -236,21 +236,21 @@ if __name__ == '__main__':
             per_device_train_batch_size=args.batch_size, ## 1
             gradient_accumulation_steps=args.gradient_accumulation_steps, ## 4
             warmup_steps=args.warmup_steps,
-            max_steps=args.max_steps, ## -1
             learning_rate=args.learning_rate,
             fp16=args.fp16 == 'True',
-            logging_steps=args.logging_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
             output_dir=args.output_dir,
             optim=args.optim,
             use_mps_device=args.use_mps_device == 'True',
             log_level=args.log_level,
-            logging_first_step=args.logging_first_step == 'True',
-            evaluation_strategy=args.evaluation_strategy,
-            eval_steps=args.eval_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
+            evaluation_strategy=args.evaluation_strategy,            
             resume_from_checkpoint=args.resume_from_checkpoint == 'True',
-            push_to_hub=args.hub_upload == 'True',
-            save_steps=args.save_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
+            push_to_hub=args.hub_upload == 'True',            
             report_to=['wandb'] if args.wandb_logging == 'True' else [],
+            max_steps=args.max_steps, ## -1
+            logging_first_step=args.logging_first_step == 'True',
+            logging_steps=args.logging_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
+            eval_steps=args.eval_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
+            save_steps=args.save_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
             load_best_model_at_end=True,
             num_train_epochs=1,
         )
