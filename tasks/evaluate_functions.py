@@ -74,7 +74,7 @@ def generate_from_prompt(model: AutoModelForCausalLM,
                          input_data: str,
                          max_tokens: int=2048,
                          min_new_tokens: int=1,#25,
-                         max_new_tokens: int=512#50,) -> str:
+                         max_new_tokens: int=512) -> str:
     """
     Generate and decode output from a Transformers model using a prompt.
     """
