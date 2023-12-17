@@ -88,8 +88,7 @@ def main():
     #--------------
     # inference
     #--------------
-    #for nshot in ['zero', 'one', 'two', 'three']:
-    for nshot in ['two', 'three']:
+    for nshot in ['zero', 'one', 'two', 'three']:
         print(f"{nshot}shot...")
         args.nshot = nshot
         model.eval()
