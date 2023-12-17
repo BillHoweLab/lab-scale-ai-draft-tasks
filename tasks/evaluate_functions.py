@@ -74,7 +74,7 @@ def generate_from_prompt(model: AutoModelForCausalLM,
                          input_data: str,
                          max_tokens: int=2048,
                          min_new_tokens: int=1,#25,
-                         max_new_tokens: int=512) -> str:
+                         max_new_tokens: int=100) -> str:
     """
     Generate and decode output from a Transformers model using a prompt.
     """
@@ -111,7 +111,7 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                       transaction: str='###',
                       max_tokens: int=2048,
                       min_new_tokens: int=1,#25,
-                      max_new_tokens: int=512,#50,
+                      max_new_tokens: int=100,#50,
                       remove_suffix: str=None,
                       rouge: bool=True,
                       bleu: bool=True,
