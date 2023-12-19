@@ -94,7 +94,7 @@ def generate_from_prompt(model: AutoModelForCausalLM,
 
     # Generate text from prompt
     with torch.no_grad():
-      output = model.generate(**input_ids, max_new_tokens=max_new_tokens, min_new_tokens=min_new_tokens)
+      output = model.generate(**input_ids, max_new_tokens=max_new_tokens, min_new_tokens=min_new_tokens, repetition_penalty=2)
     
     # Decode the output string, removing the special tokens and any suffixes
     decoded = tokenizer.decode(output[0][start_decode:])
