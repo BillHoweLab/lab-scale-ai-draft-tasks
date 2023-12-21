@@ -19,6 +19,10 @@ from typing import Mapping
 from finetune_functions import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
 from evaluate_functions import evaluate_hf_model
 
+import openai
+from openai import OpenAI
+from openai_chat_api import DialogueBot
+
 MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
@@ -107,20 +111,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # change saving directory
-    args.save_dir = 'finetuned_model_'+args.use_model_prompt_defaults
-    args.peft_save_dir = 'peft_model_'+args.use_model_prompt_defaults
-    args.log_dir = 'logs_'+args.use_model_prompt_defaults
-    args.output_dir = 'outputs_'+args.use_model_prompt_defaults
-    args.run_name = 'peft_model_'+args.use_model_prompt_defaults
+    args.save_dir = 'finetuned_model_openai'
+    args.peft_save_dir = 'peft_model_openai'
+    args.log_dir = 'logs_openai'
+    args.output_dir = 'outputs_openai'
+    args.run_name = 'peft_model_openai'
     
     # Update the start and end prompts if using the model defaults
     if args.use_model_prompt_defaults:
         args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
         
-    # HF Login
-    if args.hf_token_var:
-        hf_login(token=getenv(args.hf_token_var))
-
     # Initialize W&B
     if args.wandb_logging == 'True':
         wandb.login(key=getenv(args.wandb_api_var))
