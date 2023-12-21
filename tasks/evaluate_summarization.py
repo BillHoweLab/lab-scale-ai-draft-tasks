@@ -92,6 +92,7 @@ def main():
         print(f"{nshot}shot...")
         args.nshot = nshot
         model.eval()
+        model.to(args.device)
         model_outputs, metrics = evaluate_hf_model(model=model,
                                                    tokenizer=tokenizer,
                                                    data=test_data,
