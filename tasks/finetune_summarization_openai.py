@@ -198,7 +198,7 @@ if __name__ == '__main__':
     )
 
     validation_data_response = client.files.create(
-        file=open(path.join(args.formatted_data_dir, f'{args.finetuned_name}_validation_data.jsonl'), "rb"),
+        file=open(path.join(args.formatted_data_dir, f'{args.model_id}_validation_data.jsonl'), "rb"),
         purpose="fine-tune"
     )
 
