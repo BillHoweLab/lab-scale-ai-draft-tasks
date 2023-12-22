@@ -83,10 +83,6 @@ if __name__ == '__main__':
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=2048, help='The maximum sequence length to use for fine-tuning.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
-
-    # Update the start and end prompts if using the model defaults
-    if args.use_model_prompt_defaults:
-        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
         
     # Parse arguments
     args = parser.parse_args()
