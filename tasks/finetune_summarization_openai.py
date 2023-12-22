@@ -190,11 +190,11 @@ if __name__ == '__main__':
                               test_slice=args.test_slice)
 
     # Set the format of the data
-    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
-    transaction = """\n\nPlease summarize the following dialogue."""
     train_data = data['train']
     validation_data = data['validation']
     test_data = data['test']
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
+    transaction = """\n\nPlease summarize the following dialogue."""
 
     # Format data for fine-tuning
     print('Formatting data for fine-tuning...')
@@ -213,71 +213,88 @@ if __name__ == '__main__':
         ) for i in range(len(validation_data))]
     )
 
+    # Write the formatted data to a file
+    print('Writing formatted data to file...')
 
+    with open(path.join(args.formatted_data_dir, f'{args.model_id}_train_data.jsonl'), 'w') as f:
+        f.write(train_data_formatted)
+
+    with open(path.join(args.formatted_data_dir, f'{args.model_id}_validation_data.jsonl'), 'w') as f:
+        f.write(validation_data_formatted)
+
+    # Set the OpenAI API key and create a client
+    openai.api_key = getenv('OPENAI_API_KEY')
+    client = OpenAI()
+
+    # Create the training dataset
+    train_data_response = client.files.create(
+        file=open(path.join(args.formatted_data_dir, f'{args.model_id}_train_data.jsonl'), "rb"),
+        purpose="fine-tune"
+    )
+
+    validation_data_response = client.files.create(
+        file=open(path.join(args.formatted_data_dir, f'{args.finetuned_name}_validation_data.jsonl'), "rb"),
+        purpose="fine-tune"
+    )
+
+    # Create the fine-tuning job
+    job_response = client.fine_tuning.jobs.create(
+        training_file=train_data_response.id,
+        validation_file=validation_data_response.id,
+        model=args.model_id,
+        hyperparameters={
+            "n_epochs": 1,
+        }
+    )
     
-    # Instantiate trainer
-    print('Instantiating trainer...')
+    # Wait for the fine-tuning job to complete
+    job_status = client.fine_tuning.jobs.retrieve(job_response.id)
 
-    training_args = TrainingArguments(
-            per_device_train_batch_size=args.batch_size, ## 1
-            gradient_accumulation_steps=args.gradient_accumulation_steps, ## 4
-            warmup_steps=args.warmup_steps,
-            learning_rate=args.learning_rate,
-            fp16=args.fp16 == 'True',
-            output_dir=args.output_dir,
-            optim=args.optim,
-            use_mps_device=args.use_mps_device == 'True',
-            log_level=args.log_level,
-            evaluation_strategy=args.evaluation_strategy,            
-            resume_from_checkpoint=args.resume_from_checkpoint == 'True',
-            push_to_hub=args.hub_upload == 'True',            
-            report_to=['wandb'] if args.wandb_logging == 'True' else [],
-            max_steps=args.max_steps, ## -1
-            logging_first_step=args.logging_first_step == 'True',
-            logging_steps=args.logging_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
-            eval_steps=args.eval_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
-            save_steps=args.save_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
-            load_best_model_at_end=True,
-            num_train_epochs=1,
-        )
+    while job_status.status != 'succeeded' and job_status.status != 'failed':
+        job_status = client.fine_tuning.jobs.retrieve(job_response.id)
+        print('Fine-tuning job status: ', job_status.status)
+        print(job_status)
+        time.sleep(60)
 
-    trainer = get_default_trainer(model, 
-                                  tokenizer, 
-                                  data['train'], 
-                                  eval_dataset=data['validation'],
-                                  formatting_func=data_formatter,
-                                  max_seq_length=args.max_seq_length,
-                                  training_args=training_args)
-    
-    model.config.use_cache = False
+    if job_status.status == 'failed':
+        raise Exception('Fine-tuning job failed')
 
-    logger.info(f'Instantiated Trainer')
+    # Get the name of the fine-tuned model
+    finetuned_model = job_status.fine_tuned_model
 
-    # Fine-tune model
-    print('Fine-tuning model...')
+    # Evaluate the OpenAI model
+    print('Evaluating finetuned model')
 
-    trainer.train()
+    # Create the bot from the fine-tuned model
+    bot = DialogueBot(model=finetuned_model, system_prompt=args.system_prompt)
 
-    logger.info(f'Completed fine-tuning')
+    # Evaluate the fine-tuned model
+    metrics = evaluate_openai_classifications(bot, 
+                                              test_data, 
+                                              args.input_column, 
+                                              args.target_column, 
+                                              args.max_samples, 
+                                              args.start_prompt, 
+                                              args.end_prompt,
+                                              args.results_dir,
+                                              args.run_name,
+                                              args.remove_stop_tokens,
+                                              args.intermediate_outputs_dir)    
 
-    # Save adapter weights and tokenizer
-    if args.save_model == 'True':
+    # Log the metrics to W&B
+        if args.wandb_logging == 'True':
+            wandb.log(metrics)
 
-        print('Saving model and tokenizer...')
+    # Print the metrics to the console
+    print('Model Classification Metrics')
 
-        trainer.model.save_pretrained(args.save_dir)
-        tokenizer.save_pretrained(args.save_dir)
-
-        logger.info(f'Saved model and tokenizer to {args.save_dir}')
-
-    # Save model to hub
-    if args.hub_upload == 'True':
-
-        print('Saving model to hub...')
-
-        trainer.model.push_to_hub(args.hub_save_id, use_auth_token=True)
-
-        logger.info(f'Saved model to hub')
+    for key, value in metrics.items():
+         print(f'{key}: {value}')
         
-    if args.wandb_logging == 'True':
-        wandb.finish()
+    print('Saving metrics to: ', f'{args.results_dir}/{args.run_name}_metrics.json')
+
+    with open(path.join(args.results_dir, f'{args.run_name}_metrics.json'), 'w') as f:
+        json.dump(metrics, f)
+
+if args.wandb_logging == 'True':
+    wandb.finish()        
