@@ -46,20 +46,6 @@ if __name__ == '__main__':
 
     # Model ID
     parser.add_argument('--model_id', type=str, default='facebook/opt-125m', help='The model ID to fine-tune.')
-    parser.add_argument('--hf_token_var', type=str, default='HF_TOKEN', help='Name of the HuggingFace API token variable name.')
-    parser.add_argument('--resume_from_checkpoint', type=str, default='False', help='Whether to resume from a checkpoint.')
-
-    # Device arguments
-    parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
-    parser.add_argument('--use_mps_device', type=str, default='False', help='Whether to use an MPS device.')
-    parser.add_argument('--max_memory', type=str, default='12000MB', help='The maximum memory per GPU, in MB.')
-
-    # Model arguments
-    parser.add_argument('--gradient_checkpointing', type=str, default='True', help='Whether to use gradient checkpointing.')
-    parser.add_argument('--quantization_type', type=str, default='4bit', help='The quantization type to use for fine-tuning.')
-    parser.add_argument('--lora', type=str, default='True', help='Whether to use LoRA.')
-    parser.add_argument('--tune_modules', type=str, default='linear4bit', help='The modules to tune using LoRA.')
-    parser.add_argument('--exclude_names', type=str, default='lm_head', help='The names of the modules to exclude from tuning.')
 
     # Dataset arguments
     parser.add_argument('--dataset', type=str, default='cnn_dailymail', help='The dataset to use for fine-tuning.')
@@ -94,28 +80,6 @@ if __name__ == '__main__':
     parser.add_argument('--suffix', type=str, default='</s>', help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=2048, help='The maximum sequence length to use for fine-tuning.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='mistral', help='Whether to use the default prompts for a model')
-    
-    # Training arguments
-    parser.add_argument('--batch_size', type=int, default=1, help='The batch size to use for fine-tuning.')
-    parser.add_argument('--gradient_accumulation_steps', type=int, default=4, help='The number of gradient accumulation steps to use for fine-tuning.')
-    parser.add_argument('--warmup_steps', type=int, default=10, help='The number of warmup steps to use for fine-tuning.')
-    parser.add_argument('--max_steps', type=int, default=-1, help='The maximum number of steps to use for fine-tuning.')
-    parser.add_argument('--learning_rate', type=float, default=2e-4, help='The learning rate to use for fine-tuning.')
-    parser.add_argument('--fp16', type=str, default='True', help='Whether to use fp16.')
-    parser.add_argument('--optim', type=str, default='paged_adamw_8bit', help='The optimizer to use for fine-tuning.')
-
-    # Evaluation arguments
-    parser.add_argument('--evaluation_strategy', type=str, default='steps', help='The evaluation strategy to use for fine-tuning.')
-    parser.add_argument('--eval_steps', type=int, default=10, help='The number of steps between evaluations.')
-    parser.add_argument('--eval_on_test', type=str, default='True', help='Whether to evaluate the model on the test set after fine-tuning.')
-    parser.add_argument('--compute_summarization_metrics', type=str, default='True', help='Whether to evaluate the model on ROUGE, BLEU, and BERTScore after fine-tuning.')
-    parser.add_argument('--compute_qanda_metrics', type=str, default='False', help='Whether to evaluate the model on QA metrics like F1 and Exact Match (from SQUAD).')
-    parser.add_argument('--compute_em_metrics', type=str, default='False', help='Whether to evaluate the model on Accuracy, Precision, Recall, and F1.')
-
-    # Hub arguments
-    parser.add_argument('--hub_upload', type=str, default='False', help='Whether to upload the model to the hub.')
-    parser.add_argument('--hub_save_id', type=str, default='wolferobert3/opt-125m-peft-summarization', help='The name under which the mode will be saved on the hub.')
-    parser.add_argument('--save_steps', type=int, default=10, help='The number of steps between saving the model to the hub.')
 
     # Parse arguments
     args = parser.parse_args()
