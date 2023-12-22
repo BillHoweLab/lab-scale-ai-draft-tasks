@@ -180,12 +180,6 @@ if __name__ == '__main__':
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
     logger.addHandler(file_handler)
 
-    # ==================
-    # chat format 
-    # ==================
-    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
-    transaction = """\n\nPlease summarize the following dialogue."""
-    
     # Download and prepare data
     print('Downloading and preparing data...')
 
@@ -196,14 +190,30 @@ if __name__ == '__main__':
                               test_slice=args.test_slice)
 
     # Set the format of the data
+    system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
+    transaction = """\n\nPlease summarize the following dialogue."""
     train_data = data['train']
     validation_data = data['validation']
     test_data = data['test']
 
     # Format data for fine-tuning
     print('Formatting data for fine-tuning...')
-    train_data_formatted = '\n'.join([format_for_finetuning(train_data[args.input_col][i], train_data[args.target_col][i], args.system_prompt) for i in range(len(train_data))])
-    validation_data_formatted = '\n'.join([format_for_finetuning(validation_data[args.input_col][i], validation_data[args.target_col][i], args.system_prompt) for i in range(len(validation_data))])
+    train_data_formatted = '\n'.join(
+        [format_for_finetuning(
+            transaction + f"""\n\n## Content:\n{train_data['dialogue'][i]}\n\n## Topic:\n{train_data['section_header'][i]}\n\n## Summary:""",
+            f"""{train_data['section_text'][i]}""",
+            system_message
+        ) for i in range(len(train_data))]
+    )
+    validation_data_formatted = '\n'.join(
+        [format_for_finetuning(
+            transaction + f"""\n\n## Content:\n{validation_data['dialogue'][i]}\n\n## Topic:\n{validation_data['section_header'][i]}\n\n## Summary:""",
+            f"""{validation_data['section_text'][i]}""",
+            system_message
+        ) for i in range(len(validation_data))]
+    )
+
+
     
     # Instantiate trainer
     print('Instantiating trainer...')
