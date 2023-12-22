@@ -233,26 +233,26 @@ if __name__ == '__main__':
     print('Evaluating finetuned model')
 
     # Create the bot from the fine-tuned model
-    bot = DialogueBot(model=finetuned_model, system_prompt=system_message)
+    #bot = DialogueBot(model=finetuned_model, system_prompt=system_message)
 
     # Evaluate the fine-tuned model
-    model_outputs, metrics = evaluate_openai_model(bot, 
-                                                   test_data, 
-                                                   len(test_data), 
-                                                   transaction,
-                                                   args.remove_stop_tokens,
-                                                   args.intermediate_outputs_dir)    
+    #model_outputs, metrics = evaluate_openai_model(bot, 
+    #                                               test_data, 
+    #                                               len(test_data), 
+    #                                               transaction,
+    #                                               args.remove_stop_tokens,
+    #                                               args.intermediate_outputs_dir)    
 
     # Log the metrics to W&B
-    if args.wandb_logging == 'True':
-        wandb.log(metrics)
+    #if args.wandb_logging == 'True':
+    #    wandb.log(metrics)
 
     # Print the metrics to the console
-    for key, value in metrics.items():
-        print(f'{key}: {value}')
+    #for key, value in metrics.items():
+    #    print(f'{key}: {value}')
 
-    with open(f"results/{args.model_id}_finetuned_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
-    np.save(f"results/{args.model_id}_finetuned_zeroshot_outputs.npy", model_outputs)
+    #with open(f"results/{args.model_id}_finetuned_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
+    #np.save(f"results/{args.model_id}_finetuned_zeroshot_outputs.npy", model_outputs)
         
 if args.wandb_logging == 'True':
     wandb.finish()        
