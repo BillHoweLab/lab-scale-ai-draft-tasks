@@ -180,53 +180,11 @@ if __name__ == '__main__':
     file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
     logger.addHandler(file_handler)
 
-    # Get model and tokenizer
-    print('Getting model and tokenizer...')
-
-    model, tokenizer = get_model_and_tokenizer(args.model_id,
-                                               quantization_type=args.quantization_type,
-                                               gradient_checkpointing=bool(args.gradient_checkpointing),
-                                               device=args.device)
-
-    logger.info(f'Loaded Model ID: {args.model_id}')
-
-    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
-    
     # ==================
     # chat format 
     # ==================
     system_message = """You are a helpful medical assistant! Please help me summarize dialogues between doctors and patients. I will provide you with the content and topic for each dialogue. """
     transaction = """\n\nPlease summarize the following dialogue."""
-    
-    def data_formatter(data: Mapping,
-                       system_message: str=system_message,
-                       transaction: str=transaction) -> list[str]:
-        """
-        Wraps the format_data_as_instructions function with the specified arguments.
-        """
-
-        return format_data_as_instructions(data, tokenizer, system_message, transaction)
-
-    
-    # Get LoRA model
-    if args.lora == 'True':
-
-        print('Getting LoRA model...')
-
-        if args.tune_modules == 'linear':
-            lora_modules = [torch.nn.Linear]
-        elif args.tune_modules == 'linear4bit':
-            lora_modules = [bnb.nn.Linear4bit]
-        elif args.tune_modules == 'linear8bit':
-            lora_modules = [bnb.nn.Linear8bit]
-        else:
-            raise ValueError(f'Invalid tune_modules argument: {args.tune_modules}, must be linear, linear4bit, or linear8bit')
-
-        model = get_lora_model(model,
-                               include_modules=lora_modules,
-                               exclude_names=args.exclude_names)
-
-        logger.info(f'Loaded LoRA Model')
     
     # Download and prepare data
     print('Downloading and preparing data...')
@@ -239,13 +197,14 @@ if __name__ == '__main__':
 
     # Set the format of the data
     train_data = data['train']
-    train_data.set_format(type='torch', device=args.device)
-
     validation_data = data['validation']
-    validation_data.set_format(type='torch', device=args.device)
+    test_data = data['test']
 
-    logger.info(f'Loaded Dataset: {args.dataset}')
-
+    # Format data for fine-tuning
+    print('Formatting data for fine-tuning...')
+    train_data_formatted = '\n'.join([format_for_finetuning(train_data[args.input_col][i], train_data[args.target_col][i], args.system_prompt) for i in range(len(train_data))])
+    validation_data_formatted = '\n'.join([format_for_finetuning(validation_data[args.input_col][i], validation_data[args.target_col][i], args.system_prompt) for i in range(len(validation_data))])
+    
     # Instantiate trainer
     print('Instantiating trainer...')
 
