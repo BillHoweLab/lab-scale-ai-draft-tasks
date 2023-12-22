@@ -31,6 +31,16 @@ MODEL_SUFFIXES = {
     'opt-finetune': '</s>',
 }
 
+def format_for_finetuning(user_input: str,
+                       assistant_output: str,
+                       system_prompt: str='You are a helpful assistant specializing in fact-checking.') -> str:
+    """
+    Format data in JSON for fine-tuning an OpenAI chatbot model.
+    """
+
+    return json.dumps({"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input}, {"role": "assistant", "content": assistant_output}]})
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
 
@@ -129,9 +139,9 @@ if __name__ == '__main__':
                    config=args)
     
     # Create directories if they do not exist
-    #if not path.exists(args.peft_save_dir):
-    #    mkdir(args.peft_save_dir)
-    #    print(f'Created directory {args.peft_save_dir}')
+    if not path.exists(args.peft_save_dir):
+        mkdir(args.peft_save_dir)
+        print(f'Created directory {args.peft_save_dir}')
     
     if not path.exists(args.log_dir):
         mkdir(args.log_dir)
