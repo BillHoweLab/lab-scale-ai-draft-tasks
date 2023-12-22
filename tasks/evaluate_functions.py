@@ -231,17 +231,13 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
     
     return model_outputs, metrics
 
-def evaluate_openai_classifications(bot: DialogueBot,
-                                    data: Iterable, 
-                                    input_column: str='concat_col',
-                                    target_column: str='evidence_label',
-                                    max_samples: int=None,
-                                    system_message: str='',
-                                    transaction: str='',
-                                    save_output_dir: str=None,
-                                    run_name: str='',
-                                    remove_stop_tokens: Iterable=None,
-                                    intermediate_outputs_dir: str=None) -> dict:
+def evaluate_openai_model(bot: DialogueBot,
+                          data: Iterable, 
+                          max_samples: int=None,
+                          system_message: str='',
+                          transaction: str='',
+                          remove_stop_tokens: Iterable=None,
+                          intermediate_outputs_dir: str=None) -> dict:
     """
     Evaluate an OpenAI model on a dataset using three classification metrics.
     """
