@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import ps
+import os
 import json
 import numpy as np
 import torch
