@@ -58,7 +58,6 @@ if __name__ == '__main__':
 
     # Saving arguments
     parser.add_argument('--save_model', type=str, default='True', help='Whether to save the fine-tuned model and tokenizer.')
-    parser.add_argument('--results_dir', type=str, default='finetuned_model', help='The directory to save the fine-tuned model and tokenizer.')
     parser.add_argument('--formatted_data_dir', type=str, help='The directory to save the formatted data to', default='formatted_data')
     parser.add_argument('--intermediate_outputs_dir', type=str, help='The directory to save intermediate outputs to', default='intermediate_outputs')
     
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # change saving directory
-    args.save_dir = 'finetuned_model_openai'
+    args.results_dir = 'finetuned_model_openai'
     args.log_dir = 'logs_openai'
     args.output_dir = 'outputs_openai'
     args.run_name = 'peft_model_openai'
