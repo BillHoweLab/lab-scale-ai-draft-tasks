@@ -239,12 +239,12 @@ if __name__ == '__main__':
                                                    args.intermediate_outputs_dir)    
 
     # Log the metrics to W&B
-        if args.wandb_logging == 'True':
-            wandb.log(metrics)
+    if args.wandb_logging == 'True':
+        wandb.log(metrics)
 
     # Print the metrics to the console
     for key, value in metrics.items():
-         print(f'{key}: {value}')
+        print(f'{key}: {value}')
 
     with open(f"results/{args.model_id}_finetuned_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
     np.save(f"results/{args.model_id}_finetuned_zeroshot_outputs.npy", model_outputs)
