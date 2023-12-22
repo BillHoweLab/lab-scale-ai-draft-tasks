@@ -5,7 +5,7 @@ python finetune_summarization.py --model_id tiiuae/falcon-7b-instruct --wandb_na
 ```
 
 ```
-python finetune_summarization.py --model_id gpt3.5-turbo --wandb_name gpt3.5-turbo --use_model_prompt_defaults openai --dataset beanham/medsum
+python finetune_summarization_openai.py --model_id gpt3.5-turbo --wandb_name gpt3.5-turbo --use_model_prompt_defaults openai --dataset beanham/medsum
 ```
 
 ```
