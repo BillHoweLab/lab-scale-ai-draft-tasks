@@ -234,7 +234,7 @@ if __name__ == '__main__':
     model_outputs, metrics = evaluate_openai_model(bot, 
                                                    test_data, 
                                                    len(test_data), 
-                                                   transaction=transcation,
+                                                   transaction,
                                                    args.remove_stop_tokens,
                                                    args.intermediate_outputs_dir)    
 
