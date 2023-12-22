@@ -17,7 +17,7 @@ from os import path, mkdir, getenv
 from typing import Mapping
 
 from finetune_functions import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
-from evaluate_functions import evaluate_hf_model
+from evaluate_functions import evaluate_hf_model, evaluate_openai_model
 
 import openai
 from openai import OpenAI
@@ -231,12 +231,12 @@ if __name__ == '__main__':
     bot = DialogueBot(model=finetuned_model, system_prompt=system_message)
 
     # Evaluate the fine-tuned model
-    model_outputs, metrics = evaluate_openai_classifications(bot, 
-                                              test_data, 
-                                              len(test_data), 
-                                              transaction=transcation,
-                                              args.remove_stop_tokens,
-                                              args.intermediate_outputs_dir)    
+    model_outputs, metrics = evaluate_openai_model(bot, 
+                                                   test_data, 
+                                                   len(test_data), 
+                                                   transaction=transcation,
+                                                   args.remove_stop_tokens,
+                                                   args.intermediate_outputs_dir)    
 
     # Log the metrics to W&B
         if args.wandb_logging == 'True':
