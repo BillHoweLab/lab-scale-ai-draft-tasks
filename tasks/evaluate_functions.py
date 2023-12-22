@@ -13,6 +13,7 @@ from peft import PeftModel
 from typing import Iterable
 from tqdm import tqdm
 from os import path, makedirs, getenv
+from openai_chat_api import DialogueBot
 
 def compute_summarization_metrics(predictions: Iterable, 
                             references: Iterable,
