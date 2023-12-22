@@ -185,7 +185,7 @@ if __name__ == '__main__':
         f.write(validation_data_formatted)
 
     # Set the OpenAI API key and create a client
-    openai.api_key = getenv('OPENAI_API_KEY')
+    openai.api_key = os.environ.get('OPENAI_API_KEY')
     client = OpenAI()
 
     # Create the training dataset
