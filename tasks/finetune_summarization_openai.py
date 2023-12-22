@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import ps
 import json
 import numpy as np
 import torch
@@ -83,7 +84,8 @@ if __name__ == '__main__':
 
     # Parse arguments
     args = parser.parse_args()
-
+    os.environ[“OPENAI_API_KEY”] = args.OPENAI_API_KEY
+    
     # change saving directory
     #args.results_dir = 'finetuned_model_openai'
     args.log_dir = 'logs_openai'
@@ -186,7 +188,7 @@ if __name__ == '__main__':
         f.write(validation_data_formatted)
 
     # Set the OpenAI API key and create a client
-    openai.api_key = args.OPENAI_API_KEY
+    openai.api_key = os.environ.get[“OPENAI_API_KEY”]
     client = OpenAI()
 
     # Create the training dataset
