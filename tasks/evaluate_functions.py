@@ -230,3 +230,66 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
                                             bertscore=bertscore)
     
     return model_outputs, metrics
+
+def evaluate_openai_classifications(bot: DialogueBot,
+                                    data: Iterable, 
+                                    input_column: str='concat_col',
+                                    target_column: str='evidence_label',
+                                    max_samples: int=None,
+                                    system_message: str='',
+                                    transaction: str='',
+                                    save_output_dir: str=None,
+                                    run_name: str='',
+                                    remove_stop_tokens: Iterable=None,
+                                    intermediate_outputs_dir: str=None) -> dict:
+    """
+    Evaluate an OpenAI model on a dataset using three classification metrics.
+    """
+
+    model_outputs = []
+    intermediate_idx = 0
+
+    # Load the intermediate outputs - all pickles
+    files = [i for i in os.listdir(intermediate_outputs_dir) if i.endswith('.pkl')]
+
+    if files:
+        with open(os.path.join(intermediate_outputs_dir, files[0]), 'rb') as f:
+            model_outputs.extend(pkl.load(f))
+
+    # If no intermediate outputs, start from the beginning; otherwise, start from the last index
+    start_idx = len(model_outputs)
+
+    # Create progress bar
+    pbar = tqdm(total=max_samples, desc='Evaluating OpenAI model')
+    pbar.update(start_idx)
+    
+    # Iterate over the test set
+    for idx in range(start_idx, max_samples):
+
+        # Create the input string, adding the start and end prompts
+        input = transaction+f"""\n\n## Content:\n{data[idx]['dialogue']}\n\n## Topic:\n{data[idx]['section_header']}\n\n## Summary:"""
+      
+        # Get the model's response, omitting the system and user prompts
+        try:
+            output = bot.return_bot_response(input)
+        except:
+            pkl.dump(model_outputs, open(os.path.join(intermediate_outputs_dir, f'intermediate_outputs.pkl'), 'wb'))
+            raise ValueError('OpenAI API error')
+
+        # Remove the stop tokens if specified
+        if remove_stop_tokens is not None:
+            for token in remove_stop_tokens:
+                output = output.replace(token, '')
+
+        model_outputs.append(output.strip())
+    
+        # Update the progress bar
+        pbar.update(1)
+
+    # Compute the classification metrics, comparing the model's responses to the target labels
+    metrics = compute_summarization_metrics(model_outputs, 
+                                            data['section_text'][:len(model_outputs)], 
+                                            rouge=rouge, 
+                                            bleu=bleu, 
+                                            bertscore=bertscore)
+    return model_outputs, metrics
