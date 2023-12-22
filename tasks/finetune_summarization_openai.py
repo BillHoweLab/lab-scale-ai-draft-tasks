@@ -229,18 +229,13 @@ if __name__ == '__main__':
     print('Evaluating finetuned model')
 
     # Create the bot from the fine-tuned model
-    bot = DialogueBot(model=finetuned_model, system_prompt=args.system_prompt)
+    bot = DialogueBot(model=finetuned_model, system_prompt=system_message)
 
     # Evaluate the fine-tuned model
-    metrics = evaluate_openai_classifications(bot, 
+    model_outputs, metrics = evaluate_openai_classifications(bot, 
                                               test_data, 
-                                              args.input_column, 
-                                              args.target_column, 
-                                              args.max_samples, 
-                                              args.start_prompt, 
-                                              args.end_prompt,
-                                              args.results_dir,
-                                              args.run_name,
+                                              len(test_data), 
+                                              transaction=transcation,
                                               args.remove_stop_tokens,
                                               args.intermediate_outputs_dir)    
 
@@ -249,15 +244,11 @@ if __name__ == '__main__':
             wandb.log(metrics)
 
     # Print the metrics to the console
-    print('Model Classification Metrics')
-
     for key, value in metrics.items():
          print(f'{key}: {value}')
+
+    with open(f"results/{args.model_id}_finetuned_zeroshot_outputs.json", 'w') as f: json.dump(metrics, f)
+    np.save(f"results/{args.model_id}_finetuned_zeroshot_outputs.npy", model_outputs)
         
-    print('Saving metrics to: ', f'{args.results_dir}/{args.run_name}_metrics.json')
-
-    with open(path.join(args.results_dir, f'{args.run_name}_metrics.json'), 'w') as f:
-        json.dump(metrics, f)
-
 if args.wandb_logging == 'True':
     wandb.finish()        
