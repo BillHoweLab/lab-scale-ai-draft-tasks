@@ -58,7 +58,8 @@ if __name__ == '__main__':
     parser.add_argument('--train_slice', type=str, default='train', help='The slice of the training dataset to use for fine-tuning.')
     parser.add_argument('--validation_slice', type=str, default='validation', help='The slice of the validation dataset to use for fine-tuning.')
     parser.add_argument('--test_slice', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
-
+    parser.add_argument('--remove_stop_tokens', type=str, default=None, help='The slice of the test dataset to use for fine-tuning.')
+    
     # Saving arguments
     parser.add_argument('--save_model', type=str, default='True', help='Whether to save the fine-tuned model and tokenizer.')
     parser.add_argument('--formatted_data_dir', type=str, help='The directory to save the formatted data to', default='formatted_data')
