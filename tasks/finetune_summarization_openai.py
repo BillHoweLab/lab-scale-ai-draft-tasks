@@ -86,8 +86,7 @@ if __name__ == '__main__':
     # change saving directory
     #args.results_dir = 'finetuned_model_openai'
     args.log_dir = 'logs_openai'
-    args.output_dir = 'outputs_openai'
-    args.run_name = 'peft_model_openai'
+    args.run_name = 'openai_model'
     
     # Update the start and end prompts if using the model defaults
     if args.use_model_prompt_defaults:
