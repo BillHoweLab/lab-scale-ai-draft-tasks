@@ -46,6 +46,7 @@ if __name__ == '__main__':
 
     # Model ID
     parser.add_argument('--model_id', type=str, default='facebook/opt-125m', help='The model ID to fine-tune.')
+    parser.add_argument('--OPENAI_API_KEY', type=str, default='facebook/opt-125m', help='The model ID to fine-tune.')
 
     # Dataset arguments
     parser.add_argument('--dataset', type=str, default='cnn_dailymail', help='The dataset to use for fine-tuning.')
@@ -185,7 +186,7 @@ if __name__ == '__main__':
         f.write(validation_data_formatted)
 
     # Set the OpenAI API key and create a client
-    openai.api_key = os.environ.get('OPENAI_API_KEY')
+    openai.api_key = args.OPENAI_API_KEY
     client = OpenAI()
 
     # Create the training dataset
