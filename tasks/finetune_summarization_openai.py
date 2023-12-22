@@ -84,7 +84,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # change saving directory
-    args.results_dir = 'finetuned_model_openai'
+    #args.results_dir = 'finetuned_model_openai'
     args.log_dir = 'logs_openai'
     args.output_dir = 'outputs_openai'
     args.run_name = 'peft_model_openai'
@@ -101,9 +101,9 @@ if __name__ == '__main__':
                    config=args)
     
     # Create directories if they do not exist
-    if not path.exists(args.results_dir):
-        mkdir(args.results_dir)
-        print(f'Created directory {args.results_dir}')
+    #if not path.exists(args.results_dir):
+    #    mkdir(args.results_dir)
+    #    print(f'Created directory {args.results_dir}')
     
     if not path.exists(args.log_dir):
         mkdir(args.log_dir)
