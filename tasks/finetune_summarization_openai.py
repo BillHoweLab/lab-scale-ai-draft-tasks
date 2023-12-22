@@ -152,9 +152,9 @@ if __name__ == '__main__':
 
     data = get_dataset_slices(args.dataset,
                               args.version,
-                              train_slice='train[:20]',
-                              validation_slice='validation[:10]',
-                              test_slice='test[:10]')
+                              train_slice=args.train_slice,
+                              validation_slice=args.validation_slice,
+                              test_slice=args.test_slice)
 
     # Set the format of the data
     train_data = data['train']
