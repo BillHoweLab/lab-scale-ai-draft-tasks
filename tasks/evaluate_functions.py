@@ -234,7 +234,6 @@ def evaluate_hf_model(model: AutoModelForCausalLM,
 def evaluate_openai_model(bot: DialogueBot,
                           data: Iterable, 
                           max_samples: int=None,
-                          system_message: str='',
                           transaction: str='',
                           remove_stop_tokens: Iterable=None,
                           intermediate_outputs_dir: str=None) -> dict:
