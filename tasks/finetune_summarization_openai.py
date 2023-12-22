@@ -72,9 +72,10 @@ if __name__ == '__main__':
 
     # Saving arguments
     parser.add_argument('--save_model', type=str, default='True', help='Whether to save the fine-tuned model and tokenizer.')
-    parser.add_argument('--save_dir', type=str, default='finetuned_model', help='The directory to save the fine-tuned model and tokenizer.')
-    parser.add_argument('--peft_save_dir', type=str, default='peft_model', help='The directory to save the PEFT model.')
-
+    parser.add_argument('--results_dir', type=str, default='finetuned_model', help='The directory to save the fine-tuned model and tokenizer.')
+    parser.add_argument('--formatted_data_dir', type=str, help='The directory to save the formatted data to', default='formatted_data')
+    parser.add_argument('--intermediate_outputs_dir', type=str, help='The directory to save intermediate outputs to', default='intermediate_outputs')
+    
     # Logging arguments
     parser.add_argument('--log_dir', type=str, default='logs', help='The directory to save the log file.')
     parser.add_argument('--log_level', type=str, default='info', help='The log level to use for fine-tuning.')
@@ -101,7 +102,6 @@ if __name__ == '__main__':
     parser.add_argument('--max_steps', type=int, default=-1, help='The maximum number of steps to use for fine-tuning.')
     parser.add_argument('--learning_rate', type=float, default=2e-4, help='The learning rate to use for fine-tuning.')
     parser.add_argument('--fp16', type=str, default='True', help='Whether to use fp16.')
-    parser.add_argument('--output_dir', type=str, default='outputs', help='The directory to save the fine-tuned model.')
     parser.add_argument('--optim', type=str, default='paged_adamw_8bit', help='The optimizer to use for fine-tuning.')
 
     # Evaluation arguments
@@ -122,7 +122,6 @@ if __name__ == '__main__':
 
     # change saving directory
     args.save_dir = 'finetuned_model_openai'
-    args.peft_save_dir = 'peft_model_openai'
     args.log_dir = 'logs_openai'
     args.output_dir = 'outputs_openai'
     args.run_name = 'peft_model_openai'
@@ -139,14 +138,22 @@ if __name__ == '__main__':
                    config=args)
     
     # Create directories if they do not exist
-    if not path.exists(args.peft_save_dir):
-        mkdir(args.peft_save_dir)
-        print(f'Created directory {args.peft_save_dir}')
+    if not path.exists(args.results_dir):
+        mkdir(args.results_dir)
+        print(f'Created directory {args.results_dir}')
     
     if not path.exists(args.log_dir):
         mkdir(args.log_dir)
         print(f'Created directory {args.log_dir}')
 
+    if not path.exists(args.formatted_data_dir):
+        mkdir(args.formatted_data_dir)
+        print(f'Created directory {args.formatted_data_dir}')
+
+    if not path.exists(args.intermediate_outputs_dir):
+        mkdir(args.intermediate_outputs_dir)
+        print(f'Created directory {args.intermediate_outputs_dir}')
+        
     # Create a logger
     logger = logging.getLogger(__name__)
 
