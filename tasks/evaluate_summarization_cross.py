@@ -84,7 +84,10 @@ def main():
                                                gradient_checkpointing=False,
                                                quantization_type='4bit',
                                                device=args.device)
-    
+
+    # Get the PEFT model
+    model = PeftModel.from_pretrained(model, 'wolferobert3/llama-2-chat_factcheck_four_bit')
+
     #--------------
     # inference
     #--------------
