@@ -92,7 +92,7 @@ def main():
     #--------------
     # inference
     #--------------
-    for nshot in ['zero', 'one', 'two', 'three']:
+    for nshot in ['one', 'two', 'three']:
     #for nshot in ['zero']:
         print(f"{nshot}shot...")
         args.nshot = nshot
