@@ -7,6 +7,7 @@ from tqdm import tqdm
 from openai import OpenAI
 from typing import Iterable
 from datasets import load_dataset
+from peft import PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from finetune_functions import get_model_and_tokenizer
 from evaluate_functions import evaluate_hf_model
