@@ -9,7 +9,7 @@ from typing import Iterable
 from datasets import load_dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from finetune import get_model_and_tokenizer
-from evaluate_summarization import evaluate_hf_model
+from evaluate_classification import evaluate_hf_model
 import transformers
 import torch
     
@@ -54,15 +54,18 @@ def main():
     model.eval()
     #model.to(args.device)
     
-    print('Evaluating model on ROUGE, BLEU, and BERTScore...')
+    print('Evaluating model on Accuracy, F1 score, and Worst Group Accuracy...')
     model_outputs, metrics = evaluate_hf_model(model, 
                                 tokenizer, 
                                 test_data, 
                                 input_column=args.input_column,
                                 target_column=args.target_column,
-                                max_samples=len(test_data),
+                                # max_samples=len(test_data),
+                                max_samples=100,
                                 start_prompt=args.start_prompt,
-                                end_prompt=args.end_prompt)
+                                end_prompt=args.end_prompt,
+                                max_new_tokens=1)
+    
     for k, v in metrics.items():
         print(f'{k}: {v}')
         
