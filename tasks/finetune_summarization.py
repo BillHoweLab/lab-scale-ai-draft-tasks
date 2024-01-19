@@ -277,7 +277,8 @@ if __name__ == '__main__':
     # Fine-tune model
     print('Fine-tuning model...')
 
-    trainer.train()
+    with torch.cuda.amp.autocast(enabled=True, dtype=torch.float16) as autocast, torch.backends.cuda.sdp_kernel(enable_flash=False) as disable:
+        trainer.train()
 
     logger.info(f'Completed fine-tuning')
 
