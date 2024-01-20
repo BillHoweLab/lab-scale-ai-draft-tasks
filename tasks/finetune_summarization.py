@@ -253,7 +253,7 @@ if __name__ == '__main__':
             save_steps=args.save_steps, ## 30 ~ 0.1 epoch ~ 10% of training data
             load_best_model_at_end=True,
             num_train_epochs=1,
-            push_to_hub=True,
+            push_to_hub=args.hub_upload == 'True'
         )
 
     trainer = get_default_trainer(model, 
