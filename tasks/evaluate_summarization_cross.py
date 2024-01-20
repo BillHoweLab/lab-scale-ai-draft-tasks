@@ -88,6 +88,7 @@ def main():
 
     # Get the PEFT model
     model = PeftModel.from_pretrained(model, 'wolferobert3/llama-2-chat_factcheck_four_bit')
+    model = PeftModel.from_pretrained(model, 'isaacOnline/Llama-2-7b-chat-hf_finetunedv2')
 
     #--------------
     # inference
