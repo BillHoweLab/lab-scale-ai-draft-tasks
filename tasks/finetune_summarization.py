@@ -99,8 +99,8 @@ if __name__ == '__main__':
     parser.add_argument('--compute_em_metrics', type=str, default='False', help='Whether to evaluate the model on Accuracy, Precision, Recall, and F1.')
 
     # Hub arguments
-    parser.add_argument('--hub_upload', type=str, default='False', help='Whether to upload the model to the hub.')
-    parser.add_argument('--hub_save_id', type=str, default='wolferobert3/opt-125m-peft-summarization', help='The name under which the mode will be saved on the hub.')
+    parser.add_argument('--hub_upload', type=str, default='True', help='Whether to upload the model to the hub.')
+    parser.add_argument('--hub_save_id', type=str, default='beanham/med-summarization-peft', help='The name under which the mode will be saved on the hub.')
     parser.add_argument('--save_steps', type=int, default=10, help='The number of steps between saving the model to the hub.')
 
     # Parse arguments
