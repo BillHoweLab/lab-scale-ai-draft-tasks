@@ -14,19 +14,34 @@ import numpy as np
 from os import path, mkdir, getenv, makedirs
 from openai import OpenAI
 
-from finetune import get_dataset_slices
-from evaluate_em import evaluate_openai_model_em, EM_MODEL_CHAT_TOKENS, EM_MODEL_END_PROMPTS, EM_MODEL_SUFFIXES, EM_INSTRUCTION
+from finetune_functions import get_dataset_slices
+from evaluate_em import evaluate_openai_model_em, transaction, MODEL_SUFFIXES, system_message, examples
 from openai_chat_api import DialogueBot
 
-
-def format_for_finetuning(user_input: str,
-                       assistant_output: str,
-                       system_prompt: str='You are a helpful assistant specializing in entity matching.') -> str:
+def format_for_finetuning(question: str,
+                          assistant_output: str,
+                          system_prompt: str='You are a helpful assistant specializing in entity matching.',
+                          nshots=0) -> str:
     """
     Format data in JSON for fine-tuning an OpenAI chatbot model.
     """
 
-    return json.dumps({"messages": [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_input}, {"role": "assistant", "content": assistant_output}]})
+    chat = [
+        {"role": "system", "content": system_prompt}
+    ]
+    for shot in range(1, nshots + 1):
+        if chat[-1]['role'] == 'user':
+            chat[-1]['content'] += examples[f'example_{shot}_question']
+        else:
+            chat.append({"role": "user", "content": examples[f'example_{shot}_question']})
+        chat.append({"role": "assistant", "content": examples[f'example_{shot}_response']})
+    if chat[-1]['role'] == 'user':
+        chat[-1]['content'] += question + transaction
+    else:
+        chat.append({"role": "user", "content": question + transaction[args.dataset]})
+    chat.append({"role": "assistant", "content": assistant_output})
+
+    return json.dumps({"messages": chat})
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune an OpenAI model for Entity Matching.')
@@ -46,7 +61,6 @@ if __name__ == '__main__':
     parser.add_argument('--test_slice', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
     parser.add_argument('--max_samples', type=int, default=None, help='The maximum number of samples to use for evaluation.')
     parser.add_argument('--remove_stop_tokens', type=str, default=None, help='Stop tokens from the model output.')
-    parser.add_argument('--compute_em_metrics', type=str, default='True', help='Whether to compute entity matching metrics for the fine-tuned model.')
     parser.add_argument('--dataset_epochs', type=int, default=1, help='The number of epochs to use for fine-tuning.')
 
     # Saving arguments
@@ -69,8 +83,7 @@ if __name__ == '__main__':
 
     # Prompt arguments
     parser.add_argument('--start_prompt', type=str, default=None, help='The start prompt to add to the beginning of the input text.')
-    parser.add_argument('--end_prompt', type=str, default=EM_MODEL_END_PROMPTS['openai'], help='The end prompt to add to the end of the input text.')
-    parser.add_argument('--suffix', type=str, default=EM_MODEL_SUFFIXES['openai'], help='The suffix to add to the end of the input and target text.')
+    parser.add_argument('--suffix', type=str, default=MODEL_SUFFIXES['openai'], help='The suffix to add to the end of the input and target text.')
     parser.add_argument('--max_seq_length', type=int, default=974, help='The maximum sequence length to use for fine-tuning.')
     parser.add_argument('--use_model_prompt_defaults', type=str, default='openai', help='Whether to use the default prompts for a model')
 
@@ -82,11 +95,7 @@ if __name__ == '__main__':
 
     # Update the start and end prompts if using the model defaults
     if args.start_prompt is None:
-        args.start_prompt = EM_INSTRUCTION[args.dataset]
-    if args.use_model_prompt_defaults:
-        args.start_prompt = EM_MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
-        args.end_prompt = EM_MODEL_END_PROMPTS[args.use_model_prompt_defaults]
-        args.suffix = EM_MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
 
     # Initialize W&B
     if args.wandb_logging == 'True':
@@ -153,8 +162,8 @@ if __name__ == '__main__':
 
     # Format data for fine-tuning
     print('Formatting data for fine-tuning...')
-    train_data_formatted = '\n'.join([format_for_finetuning(train_data[args.input_col][i], train_data[args.target_col][i], args.system_prompt) for i in range(len(train_data))])
-    validation_data_formatted = '\n'.join([format_for_finetuning(validation_data[args.input_col][i], validation_data[args.target_col][i], args.system_prompt) for i in range(len(validation_data))])
+    train_data_formatted = '\n'.join([format_for_finetuning(train_data[args.input_col][i], train_data[args.target_col][i], system_message[args.dataset]) for i in range(len(train_data))])
+    validation_data_formatted = '\n'.join([format_for_finetuning(validation_data[args.input_col][i], validation_data[args.target_col][i], system_message[args.dataset]) for i in range(len(validation_data))])
 
     # Write the formatted data to a file
     print('Writing formatted data to file...')
@@ -180,6 +189,11 @@ if __name__ == '__main__':
         purpose="fine-tune"
     )
 
+    # Log finetune start time
+    if args.wandb_logging == 'True':
+        finetune_start_time = time.time()
+        wandb.log({'finetune_time_start': finetune_start_time})
+
     # Create the fine-tuning job
     job_response = client.fine_tuning.jobs.create(
         training_file=data_response.id,
@@ -202,74 +216,83 @@ if __name__ == '__main__':
     if job_status.status == 'failed':
         raise Exception('Fine-tuning job failed')
 
+    # Log finetune end time
+    if args.wandb_logging == 'True':
+        finetune_end_time = time.time()
+        wandb.log({'finetune_time_end': finetune_end_time})
+        wandb.log({'finetune_time': finetune_end_time - finetune_start_time})
+
     # Get the name of the fine-tuned model
     finetuned_model = job_status.fine_tuned_model
 
-    # Evaluate finetuned model's EM classifications
-    if args.compute_em_metrics == 'True':
 
-        print('Evaluating model on Entity Matching Test Set...')
-        args.intermediate_outputs_dir = f'{args.intermediate_outputs_dir}_0-shot'
+    # Create intermediate outputs directory
+    if not path.exists(args.intermediate_outputs_dir):
+        makedirs(args.intermediate_outputs_dir)
 
-        # Create intermediate outputs directory
-        if not path.exists(args.intermediate_outputs_dir):
-            makedirs(args.intermediate_outputs_dir)
+    # Log eval time start
+    if args.wandb_logging == 'True':
+        inference_start_time = time.time()
+        wandb.log({'inference_time_start': inference_start_time})
 
-        # Evaluate the OpenAI model
-        print('Evaluating finetuned model')
+    # Evaluate the OpenAI model
+    print('Evaluating OpenAI model on EM task: ', args.model_id)
+    chat = [
+        {"role": "user", "content": system_message[args.dataset]}
+    ]
+    bot = DialogueBot(model=finetuned_model, system_prompt=args.system_prompt, history=chat)
+    em_metrics, model_output = evaluate_openai_model_em(bot = bot,
+                                          data = data['test'],
+                                          input_column=args.input_col,
+                                          target_column=args.target_col,
+                                          max_samples=args.max_samples,
+                                          run_name=args.run_name,
+                                          remove_stop_tokens=args.remove_stop_tokens,
+                                          intermediate_outputs_dir=args.intermediate_outputs_dir,
+                                                        dataset=args.dataset)
 
-        # Create the bot from the fine-tuned model
-        bot = DialogueBot(model=finetuned_model, system_prompt=args.system_prompt)
+    # Log eval time end
+    if args.wandb_logging == 'True':
+        inference_end_time = time.time()
+        wandb.log({'inference_time_end': inference_end_time})
+        wandb.log({'inference_time': inference_end_time - inference_start_time})
 
-        # Evaluate the fine-tuned model
-        em_metrics, model_output = evaluate_openai_model_em(bot=bot,
-                                                            data=test_data,
-                                                            input_column=args.input_col,
-                                                            target_column=args.target_col,
-                                                            max_samples=args.max_samples,
-                                                            start_prompt=args.start_prompt,
-                                                            end_prompt=args.end_prompt,
-                                                            results_dir=args.results_dir,
-                                                            run_name=args.run_name,
-                                                            remove_stop_tokens=args.remove_stop_tokens,
-                                                            intermediate_outputs_dir=args.intermediate_outputs_dir)
+    # Print the metrics to the console
+    print('Model EM Metrics:')
+    for key, value in em_metrics.items():
+        print(f'{key}: {value}')
 
-        # Print the metrics to the console
-        print('Model EM Metrics:')
-        for key, value in em_metrics.items():
-            print(f'{key}: {value}')
+    # Add the model and dataset names to the metrics dictionary
+    metrics = {**vars(args), **em_metrics}
 
-        # Add the model and dataset names to the metrics dictionary
-        metrics = {**vars(args), **em_metrics}
+    # Save the metrics to a JSON file
+    model_id = args.model_id
+    save_path = path.join(args.results_dir, f'{model_id.replace("/", "-")}_em_metrics.json')
+    print('Saving EM metrics to: ', save_path)
 
-        # Save the metrics to a JSON file
-        model_id = args.model_id
-        save_path = path.join(args.results_dir, f'{model_id.replace("/", "-")}_em_metrics.json')
-        print('Saving EM metrics to: ', save_path)
+    # Log the metrics to W&B
+    if args.wandb_logging == 'True':
+        wandb.log(metrics)
+        wandb.log({'Model Output': wandb.Table(dataframe=model_output)})
+        wandb.finish()
 
-        # Log the metrics to W&B
-        if args.wandb_logging == 'True':
-            wandb.log(metrics)
-            wandb.log({'Model Output': wandb.Table(dataframe=model_output)})
-            wandb.finish()
-
-        if not path.exists(args.results_dir):
-            makedirs(args.results_dir)
-
-
-        class NpEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if isinstance(obj, np.integer):
-                    return int(obj)
-                if isinstance(obj, np.floating):
-                    return float(obj)
-                if isinstance(obj, np.ndarray):
-                    return obj.tolist()
-                return super(NpEncoder, self).default(obj)
+    if not path.exists(args.results_dir):
+        makedirs(args.results_dir)
 
 
-        with open(save_path, 'w') as f:
-            json.dump(metrics, f, cls=NpEncoder)
+    class NpEncoder(json.JSONEncoder):
+        def default(self, obj):
+            if isinstance(obj, np.integer):
+                return int(obj)
+            if isinstance(obj, np.floating):
+                return float(obj)
+            if isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return super(NpEncoder, self).default(obj)
+
+
+    with open(save_path, 'w') as f:
+        json.dump(metrics, f, cls=NpEncoder)
 
     if args.wandb_logging == 'True':
         wandb.finish()

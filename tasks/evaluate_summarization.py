@@ -1,6 +1,5 @@
 import json
 import argparse
-import evaluate
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -19,7 +18,8 @@ MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
     'llama-2': '</s>',
-    'falcon': '<|endoftext|>'
+    'falcon': '<|endoftext|>',
+    'opt-finetune': '</s>',
 }
 
 #-----------------------
@@ -39,7 +39,7 @@ def main():
     parser.add_argument('--device', type=str, default='cuda:0', help='The device to mount the model on.')
     parser.add_argument('--hf_token_var', type=str, default='test', help='The slice of the test dataset to use for fine-tuning.')
     args = parser.parse_args()
-    
+
     if args.use_model_prompt_defaults:
         args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
     if args.hf_token_var:
@@ -75,7 +75,9 @@ def main():
         'example_3_question':example_3_question,
         'example_3_response':example_3_response,        
     }
-        
+
+    hf_login(token=getenv('HF_TOKEN'))
+
     #-------------------
     # load summarizer
     #-------------------

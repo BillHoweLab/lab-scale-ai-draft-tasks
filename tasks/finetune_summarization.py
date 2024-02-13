@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 
 import numpy as np
 import torch
@@ -10,15 +11,59 @@ import datasets
 import argparse
 import wandb
 
-from transformers import TrainingArguments
+from huggingface_hub import login as hf_login
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, TrainingArguments, DataCollatorForLanguageModeling, AutoModel
 from huggingface_hub import login as hf_login
 from os import path, mkdir, getenv, makedirs
 from typing import Mapping
 
-from finetune import format_data_as_instructions, get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
-from evaluate_summarization import evaluate_hf_model
-from evaluate_qanda import evaluate_hf_model_qa
-from evaluate_em import evaluate_hf_model_em, EM_MODEL_CHAT_TOKENS, EM_MODEL_END_PROMPTS, EM_MODEL_SUFFIXES, EM_INSTRUCTION
+from finetune_functions import get_model_and_tokenizer, get_lora_model, get_default_trainer, get_dataset_slices
+from evaluate_em import evaluate_hf_model_em, MODEL_SUFFIXES, system_message, transaction, examples
+
+
+def format_data_as_instructions(data: Mapping,
+                                tokenizer: AutoTokenizer,
+                                system_message: str = '###',
+                                transaction: str = '###',
+                                nshots=0) -> list[str]:
+    """
+    Formats text data as instructions for the model. Can be used as a formatting function for the trainer class.
+    """
+
+    output_texts = []
+
+    # Iterate over the test set
+    for idx in range(len(data['prompt'])):
+        question = data['prompt'][idx]
+
+        chat = [
+            {"role": "user", "content": system_message}
+        ]
+        for shot in range(1, nshots + 1):
+            if chat[-1]['role'] == 'user':
+                chat[-1]['content'] += examples[f'example_{shot}_question']
+            else:
+                chat.append({"role": "user", "content": examples[f'example_{shot}_question']})
+            chat.append({"role": "assistant", "content": examples[f'example_{shot}_response']})
+        if chat[-1]['role'] == 'user':
+            chat[-1]['content'] += question + transaction
+        else:
+            chat.append({"role": "user", "content": question + transaction})
+        chat.append({"role": "assistant", "content": data['overall_label'][idx]})
+
+        output_text = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=False)
+
+        if 'falcon' in tokenizer.name_or_path:
+            output_text = output_text.replace('user', 'User:')
+            output_text = output_text.replace('assistant', 'Assistant:')
+            output_text = output_text.replace('Assistant:!', 'assistant!')
+            output_text = output_text.replace('Assistant:,', 'assistant,')
+            output_text = output_text.replace('<|im_start|>', '')
+            output_text = output_text.replace('<|im_end|>', '')
+
+        output_texts.append(output_text)
+
+    return output_texts
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Fine-tune a summarization model.')
@@ -60,7 +105,6 @@ if __name__ == '__main__':
     parser.add_argument('--logging_first_step', type=str, default='True', help='Whether to log the first step.')
     parser.add_argument('--logging_steps', type=int, default=1, help='The number of steps between logging.')
     parser.add_argument('--run_name', type=str, default='peft_finetune', help='The name of the run, for logging.')
-    parser.add_argument('--results_dir', type=str, help='The directory to save the results to', default='results')
 
     # W&B logging arguments
     parser.add_argument('--wandb_logging', type=str, default='True', help='Whether to log to W&B.')
@@ -79,14 +123,15 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=1, help='The batch size to use for fine-tuning.')
     parser.add_argument('--gradient_accumulation_steps', type=int, default=4, help='The number of gradient accumulation steps to use for fine-tuning.')
     parser.add_argument('--warmup_steps', type=int, default=10, help='The number of warmup steps to use for fine-tuning.')
-    parser.add_argument('--max_steps', type=int, default=500, help='The maximum number of steps to use for fine-tuning.')
+    parser.add_argument('--max_steps', type=int, default=700, help='The maximum number of steps to use for fine-tuning.')
     parser.add_argument('--learning_rate', type=float, default=2e-4, help='The learning rate to use for fine-tuning.')
     parser.add_argument('--fp16', type=str, default='True', help='Whether to use fp16.')
+    parser.add_argument('--output_dir', type=str, default='outputs', help='The directory to save the fine-tuned model.')
     parser.add_argument('--optim', type=str, default='paged_adamw_8bit', help='The optimizer to use for fine-tuning.')
 
     # Evaluation arguments
     parser.add_argument('--evaluation_strategy', type=str, default='steps', help='The evaluation strategy to use for fine-tuning.')
-    parser.add_argument('--eval_steps', type=int, default=250, help='The number of steps between evaluations.')
+    parser.add_argument('--eval_steps', type=int, default=10, help='The number of steps between evaluations.')
     parser.add_argument('--eval_on_test', type=str, default='True', help='Whether to evaluate the model on the test set after fine-tuning.')
     parser.add_argument('--compute_summarization_metrics', type=str, default='True', help='Whether to evaluate the model on ROUGE, BLEU, and BERTScore after fine-tuning.')
     parser.add_argument('--compute_qanda_metrics', type=str, default='False', help='Whether to evaluate the model on QA metrics like F1 and Exact Match (from SQUAD).')
@@ -95,31 +140,26 @@ if __name__ == '__main__':
     # Hub arguments
     parser.add_argument('--hub_upload', type=str, default='True', help='Whether to upload the model to the hub.')
     parser.add_argument('--hub_save_id', type=str, default='isaacOnline/opt-125m-peft-summarization', help='The name under which the mode will be saved on the hub.')
-    parser.add_argument('--save_steps', type=int, default=500, help='The number of steps between saving the model to the hub.')
+    parser.add_argument('--save_steps', type=int, default=10, help='The number of steps between saving the model to the hub.')
+
+    # Generation arguments
+    parser.add_argument('--min_new_tokens', type=int, help='The minimum number of new tokens to generate', default=1)
+    parser.add_argument('--max_new_tokens', type=int, help='The maximum number of new tokens to generate', default=10)
 
     # Parse arguments
     args = parser.parse_args()
 
+    # change saving directory
+    args.save_dir = 'finetuned_model_'+args.use_model_prompt_defaults
+    args.peft_save_dir = 'peft_model_'+args.use_model_prompt_defaults
+    args.log_dir = 'logs_'+args.use_model_prompt_defaults
+    args.output_dir = 'outputs_'+args.use_model_prompt_defaults
+    args.run_name = 'peft_model_'+args.use_model_prompt_defaults
+
     # Update the start and end prompts if using the model defaults
-    if args.start_prompt is None:
-        args.start_prompt = EM_INSTRUCTION[args.dataset]
     if args.use_model_prompt_defaults:
-        args.start_prompt = EM_MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
-        args.end_prompt = EM_MODEL_END_PROMPTS[args.use_model_prompt_defaults]
-        args.suffix = EM_MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        args.suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
 
-    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
-    def data_formatter(data: Mapping,
-                       input_field: str=args.input_col,
-                       target_field: str=args.target_col,
-                       start_prompt: str=args.start_prompt,
-                       end_prompt: str=args.end_prompt,
-                       suffix: str=args.suffix) -> list[str]:
-        """
-        Wraps the format_data_as_instructions function with the specified arguments.
-        """
-
-        return format_data_as_instructions(data, input_field, target_field, start_prompt, end_prompt, suffix)
 
     # HF Login
     if args.hf_token_var:
@@ -133,13 +173,10 @@ if __name__ == '__main__':
                    config=args)
     
     # Create directories if they do not exist
-    if not path.exists(args.peft_save_dir):
+    if not path.exists(args.output_dir):
         makedirs(args.peft_save_dir, exist_ok=True)
         print(f'Created directory {args.peft_save_dir}')
-    
-    if not path.exists(args.results_dir):
-        mkdir(args.results_dir)
-        print(f'Created directory {args.results_dir}')
+
 
     if not path.exists(args.log_dir):
         mkdir(args.log_dir)
@@ -179,9 +216,21 @@ if __name__ == '__main__':
                                                gradient_checkpointing=bool(args.gradient_checkpointing),
                                                device=args.device)
 
-    tokenizer.padding_side = 'right'
-
     logger.info(f'Loaded Model ID: {args.model_id}')
+
+    # Define a data formatter function that wraps the format_data_as_instructions function with the specified arguments
+    # ==================
+    # chat format
+    # ==================
+    def data_formatter(data: Mapping,
+                       system_message: str=system_message,
+                       transaction: str=transaction) -> list[str]:
+        """
+        Wraps the format_data_as_instructions function with the specified arguments.
+        """
+
+        return format_data_as_instructions(data, tokenizer, system_message[args.dataset], transaction[args.dataset])
+
 
     # Get LoRA model
     if args.lora == 'True':
@@ -238,21 +287,22 @@ if __name__ == '__main__':
             per_device_train_batch_size=args.batch_size,
             gradient_accumulation_steps=args.gradient_accumulation_steps,
             warmup_steps=args.warmup_steps,
-            max_steps=args.max_steps,
             learning_rate=args.learning_rate,
             fp16=args.fp16 == 'True',
-            logging_steps=args.logging_steps,
-            output_dir=args.peft_save_dir,
+            output_dir=args.output_dir,
             optim=args.optim,
             use_mps_device=args.use_mps_device == 'True',
             log_level=args.log_level,
-            logging_first_step=args.logging_first_step == 'True',
             evaluation_strategy=args.evaluation_strategy,
-            eval_steps=args.eval_steps,
             resume_from_checkpoint=args.resume_from_checkpoint == 'True',
             push_to_hub=args.hub_upload == 'True',
-            save_steps=args.save_steps,
             report_to=['wandb'] if args.wandb_logging == 'True' else [],
+            max_steps=args.max_steps,
+            logging_first_step=args.logging_first_step == 'True',
+            logging_steps=args.logging_steps,
+            eval_steps=args.eval_steps,
+            save_steps=args.save_steps,
+            load_best_model_at_end=True,
         )
 
     trainer = get_default_trainer(model, 
@@ -267,10 +317,19 @@ if __name__ == '__main__':
 
     logger.info(f'Instantiated Trainer')
 
-    # Fine-tune model
-    print('Fine-tuning model...')
+    # Log finetune start time
+    if args.wandb_logging == 'True':
+        finetune_start_time = time.time()
+        wandb.log({'finetune_time_start': finetune_start_time})
 
     trainer.train()
+
+
+    # Log finetune end time
+    if args.wandb_logging == 'True':
+        finetune_end_time = time.time()
+        wandb.log({'finetune_time_end': finetune_end_time})
+        wandb.log({'finetune_time': finetune_end_time - finetune_start_time})
 
     logger.info(f'Completed fine-tuning')
 
@@ -288,6 +347,7 @@ if __name__ == '__main__':
 
         logger.info(f'Saved model and tokenizer to {args.save_dir}')
 
+
     # Save model to hub
     if args.hub_upload == 'True':
 
@@ -297,67 +357,6 @@ if __name__ == '__main__':
 
         logger.info(f'Saved model to hub')
 
-    # Evaluate model on ROUGE, BLEU, and BERTScore
-    if args.compute_summarization_metrics == 'True':
-
-        model = trainer.model
-
-        model.eval()
-        model.to(args.device)
-        model.config.use_cache = True
-
-        print('Evaluating model on ROUGE, BLEU, and BERTScore...')
-
-        model_outputs, metrics = evaluate_hf_model(model,
-                                    tokenizer,
-                                    data['test'],
-                                    input_column=args.input_col,
-                                    target_column=args.target_col,
-                                    max_samples=len(data['test']),
-                                    start_prompt=args.start_prompt,
-                                    end_prompt=args.end_prompt,
-                                    remove_suffix=args.suffix)
-        
-        logger.info(f'Completed ROUGE, BLEU, and BERTScore evaluation')
-        wandb.log(metrics)
-
-        # Print metrics
-        print('Finetuned Model Metrics:')
-
-        for k, v in metrics.items():
-            print(f'{k}: {v}')
-
-        # save model outputs
-        np.save(f"{args.model_id.split('/')[1]}_finetuned_model_outputs.npy", model_outputs)
-
-    if args.compute_qanda_metrics == 'True':
-
-        model = trainer.model
-
-        model.eval()
-        model.to(args.device)
-        model.config.use_cache = True
-
-        print('Evaluating model on QA Metrics (Exact Match and F1 Score)...')
-
-        qa_metrics = evaluate_hf_model_qa(model, 
-                        tokenizer, 
-                        data['test'], 
-                        question_column=args.input_col,
-                        answer_column=args.target_col,
-                        max_samples=200,
-                        remove_suffix=args.suffix)
-                        #len(data['test']))
-        
-        logger.info('Completed QA Metrics evaluation')
-        wandb.log(qa_metrics)
-
-        # Print metrics
-        print('Finetuned Model QA Metrics:')
-
-        for k, v in qa_metrics.items():
-            print(f'{k}: {v}')
-
     if args.compute_em_metrics == 'True':
 
         model = trainer.model
@@ -366,18 +365,35 @@ if __name__ == '__main__':
         model.to(args.device)
         model.config.use_cache = True
 
-        print('Evaluating model on EM Metrics (F1, Precision, Accuracy, Recall)...')
+        # log eval start time
+        if args.wandb_logging == 'True':
+            eval_start_time = time.time()
+            wandb.log({'inference_time_start': eval_start_time})
 
-        em_metrics, model_output = evaluate_hf_model_em(model,
-                                          tokenizer,
-                                          data=test_data,
-                                          input_column=args.input_col,
-                                          target_column=args.target_col,
-                                          max_samples=200,
-                                          start_prompt=args.start_prompt,
-                                          end_prompt=args.end_prompt,
-                                          save_output_dir=args.save_dir,
-                                          remove_suffix=args.suffix)
+        print('Evaluating model on EM Metrics (F1, Precision, Accuracy, Recall)...')
+        em_metrics, model_output = evaluate_hf_model_em(model=model,
+                                                        tokenizer=tokenizer,
+                                                        data=test_data,
+                                                        input_column=args.input_col,
+                                                        target_column=args.target_col,
+                                                        max_samples=200,
+                                                        max_tokens=500,
+                                                        min_new_tokens=args.min_new_tokens,
+                                                        max_new_tokens=args.max_new_tokens,
+                                                        remove_suffix=args.suffix,
+                                                        run_name=args.run_name,
+                                                        system_message=system_message[args.dataset],
+                                                        transaction=transaction[args.dataset],
+                                                        examples=examples[args.dataset],
+                                                        save_output_dir=args.save_dir,
+                                                        nshots=0
+                                                        )
+
+        # log eval end time
+        if args.wandb_logging == 'True':
+            eval_end_time = time.time()
+            wandb.log({'inference_time_end': eval_end_time})
+            wandb.log({'inference_time': eval_end_time - eval_start_time})
         # len(data['test']))
 
         logger.info('Completed EM Metrics evaluation')

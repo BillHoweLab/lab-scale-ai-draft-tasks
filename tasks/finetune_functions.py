@@ -2,11 +2,12 @@ import torch
 import bitsandbytes as bnb
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, TrainingArguments, DataCollatorForLanguageModeling, AutoModel
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, PeftModel, PeftConfig
 from datasets import load_dataset
 from trl import SFTTrainer
 from tqdm import tqdm
 from typing import Mapping, Iterable
+
 
 QUANZATION_MAP = {
     '4bit': BitsAndBytesConfig(
@@ -142,6 +143,38 @@ def get_lora_model(model: AutoModel,
     )
 
     return get_peft_model(model, config)
+
+
+def get_lora_pretrained_model(model_id,
+                              adapter_model,
+                              device,
+                              quantization_type=None,
+                              gradient_checkpointing=True,
+                              revision=None
+                              ):
+    # Download the tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+
+    # Set the pad token (needed for trainer class, no value by default for most causal models)
+    if not tokenizer.pad_token:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # Download the model, quantize if requested
+    if quantization_type:
+        model = AutoModelForCausalLM.from_pretrained(model_id,
+                                                     quantization_config=QUANZATION_MAP[quantization_type],
+                                                     device_map=device)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(model_id,
+                                                     device_map=device)
+
+    # Enable gradient checkpointing if requested
+    if gradient_checkpointing:
+        model.gradient_checkpointing_enable()
+
+    model = PeftModel.from_pretrained(model, adapter_model, revision=revision)
+
+    return model, tokenizer
 
 def get_summarization_dataset(dataset: str,
                               streaming: bool=False,

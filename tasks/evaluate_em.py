@@ -7,7 +7,7 @@ from typing import Iterable
 from typing import List
 import pickle as pkl
 import os
-
+import time
 
 import torch
 import wandb
@@ -17,44 +17,87 @@ from datasets import load_dataset
 from peft import PeftModel
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from huggingface_hub import login as hf_login
 
 from openai_chat_api import DialogueBot
-from generate_from_hf_model import generate_from_prompt
-from finetune import QUANZATION_MAP
+from finetune_functions import get_model_and_tokenizer, get_lora_pretrained_model
 
 
-EM_INSTRUCTION = {
-    'isaacOnline/deeds-and-voting-matching':"""Your task is to compare pairs of names and addresses for people from Mecklenburg County, North Carolina,
-  to determine if they match. The names and address are derived from public records. Review each pair to see if they
-  refer to the same person, considering variations in name presentation and address details. Uncommon names or similar
-  addresses might indicate a match, but be cautious, as some names are more common than others.
-Do these records refer to the same person? Output only one token.
-
-  Enter 'y' if they do
-  Enter 'n' if they do not
-
+system_message = {
+    'isaacOnline/deeds-and-voting-matching':"""You are a helpful assistant, and your task is to compare pairs of names 
+    and addresses from two records to determine if they match. 
 """,
 'isaacOnline/rel-text':"""Your task is to compare records from two datasets, to determine if they refer to the same 
 entity. The records may have different columns and formats, or may all been in the same format. Columns may also 
-be spelled differently in one dataset than in the other. Any missing values are represented with the text "NA".
-Do these records refer to the same entity? Output only one token.
-
-  Enter 'y' if they do
-  Enter 'n' if they do not
-
+be spelled differently in one dataset than in the other. Any missing values are represented with the text "NA".\n
 """
 }
 
-EM_ONE_SHOT = {
-    'isaacOnline/deeds-and-voting-matching':"""\nHere is an example of how to perform the task. 
+transaction = {
+    'isaacOnline/deeds-and-voting-matching':
+        """
+
+Do these records refer to the same person? Output only one token.
+
+Output 'y' if they do
+Output 'n' if they do not
+  
+""",
+    'isaacOnline/rel-text':
+"""Do these records refer to the same entity? Output only one token.
+
+Output 'y' if they do
+Output 'n' if they do not
+  
+"""
+}
+
+
+examples = {
+    'isaacOnline/deeds-and-voting-matching':
+{
+    'example_1_question': """ 
 Name 1: DOAN TIFFANY A. JORDAN
 Name 2: DOAN ETHAN TRUONG
 Address 1: 4652 CEDAR ROCK DR CHARLOTTE NC
-Address 2: 4652 CEDAR ROCK DR CHARLOTTE NC
+Address 2: 4652 CEDAR ROCK DR CHARLOTTE NC 
 
-What is the correct label? n
+Do these records refer to the same person? Output only one token.
+
+Output 'y' if they do
+Output 'n' if they do not
+
 """,
-    'isaacOnline/rel-text': """\nHere is an example of how to perform the task.
+    'example_1_response': 'n',
+    'example_2_question': """ 
+Name 1: GILLARD JC
+Name 2: GILLARD JR J C
+Address 1: 3802 RICELAND PL UNINC NC
+Address 2: 3802 RICELAND PL CHARLOTTE NC
+
+Do these records refer to the same person? Output only one token.
+
+Output 'y' if they do
+Output 'n' if they do not
+
+""",
+    'example_2_response': 'y',
+    'example_3_question': """ 
+Name 1: WHITE DEBRA
+Name 2: WHITE DEBRA
+Address 1: 4634 DEER CROSS TL CHARLOTTE NC
+Address 2: 3130 CRISP WOOD LN CHARLOTTE NC
+
+Do these records refer to the same person? Output only one token.
+
+Output 'y' if they do
+Output 'n' if they do not
+
+""",
+    'example_3_response': 'n'
+},
+    'isaacOnline/rel-text': {
+'example_1_question': """\nHere is an example of how to perform the task.
 LEFT text: This paper describes an efficient optimistic concurrency control scheme for use in distributed database systems in which objects are cached and manipulated at client machines while persistent storage and transactional support are provided by servers. The scheme provides both serializability and external consistency for committed transactions; it uses loosely synchronized clocks to achieve global serialization. It stores only a single version of each object, and avoids maintaining any concurrency control information on a per-object basis; instead, it tracks recent invalidations on a per-client basis, an approach that has low in-memory space overhead and no per-object disk overhead.
 RIGHT text: NA
 
@@ -73,19 +116,10 @@ RIGHT year: 1995
 LEFT authors: NA
 RIGHT authors: atul adya , robert gruber , barbara liskov , umesh maheshwari
 
-What is the correct label? y
-    """
-}
-EM_TWO_SHOT = {
-    'isaacOnline/deeds-and-voting-matching':"""Here is another example of how to perform the task. 
-Name 1: GILLARD JC
-Name 2: GILLARD JR J C
-Address 1: 3802 RICELAND PL UNINC NC
-Address 2: 3802 RICELAND PL CHARLOTTE NC
-
-What is the correct label? y
-""",
-    'isaacOnline/rel-text': """Here is another example of how to perform the task.
+What is the correct label? 
+    """,
+    'example_1_response': 'y',
+    'example_2_question':"""Here is another example of how to perform the task.
 LEFT text: This paper takes the next logical step: It considers the use of timestamping for capturing transaction and valid time in the context of transactions. The paper initially identifies and analyzes several problems with straightforward timestamping, then proceeds to propose a variety of techniques aimed at solving these problems. Timestamping the results of a transaction with the commit time of the transaction is a promising approach. The paper studies how this timestamping may be done using a spectrum of techniques. While many database facts are valid until now, the current time, this value is absent from the existing temporal types. Techniques that address this problem using different substitute values are presented. Using a stratum architecture, the performance of the different proposed techniques are studied. Although querying and modifying time-varying data is accompanied by a number of subtle problems, we present a comprehensive approach that provides application programmers with simple, consistent, and efficient support for modifying bitemporal databases in the context of user transactions.
 
 RIGHT text: NA
@@ -105,20 +139,9 @@ RIGHT year: 1996
 LEFT authors: NA
 RIGHT authors: rajendran m. sivasankaran , john a. stankovic , don towsley , bhaskar purimetla , krithi ramamritham
 
-What is the correct label? n
-"""
-} 
-
-EM_THREE_SHOT = {
-    'isaacOnline/deeds-and-voting-matching':"""Here is another example of how to perform the task. 
-Name 1: WHITE DEBRA
-Name 2: WHITE DEBRA
-Address 1: 4634 DEER CROSS TL CHARLOTTE NC
-Address 2: 3130 CRISP WOOD LN CHARLOTTE NC
-
-What is the correct label? n
-""",
-    'isaacOnline/rel-text': """Here is another example of how to perform the task.
+What is the correct label?""",
+    'example_2_response': 'n',
+    'example_3_question': """Here is another example of how to perform the task.
 LEFT text: Recent studies have shown that cache-conscious indexes outperform conventional main memory indexes. Cache-conscious indexes focus on better utilization of each cache line for improving search performance of a single lookup. None has exploited cache spatial and temporal locality between consecutive lookups. We show that conventional indexes, even ""cache-conscious"" ones, suffer from significant cache thrashing between accesses. Such thrashing can impact the performance of applications such as stream processing and query operations such as index-nested-loops join.
 
 RIGHT text: NA
@@ -138,34 +161,53 @@ RIGHT year: 2001
 LEFT authors: NA
 RIGHT authors: tamer kahveci , ambuj k. singh
 
-What is the correct label? n
-"""
+What is the correct label? 
+""",
+        'example_3_response': 'n'
+    }
 }
-EM_TRANSITION = 'Here is the example that needs to be classified. Please respond with only one token after being asked for the correct label. '
 # Default chat tokens, end prompts, and suffixes for each model
-EM_MODEL_CHAT_TOKENS = {
-    'openai': '',
-    'mistral': '<s>[INST] ',
-    'llama-2': '<s>[INST] <<SYS>>\nYou are a helpful assistant.\n<</SYS>>\n\n',
-    'falcon': 'A helpful assistant.\nUser: ',
-    'opt-finetune': '',
-}
 
-EM_MODEL_END_PROMPTS = {
-    'openai': ' What is the correct label?',
-    'mistral': ' What is the correct label? [/INST]',
-    'llama-2': ' What is the correct label? [/INST]',
-    'falcon': ' What is the correct label?\nAssistant:',
-    'opt-finetune': ' What is the correct label?',
-}
-
-EM_MODEL_SUFFIXES = {
+MODEL_SUFFIXES = {
     'openai': '',
     'mistral': '</s>',
     'llama-2': '</s>',
     'falcon': '<|endoftext|>',
     'opt-finetune': '</s>',
 }
+
+
+def generate_from_prompt(model: AutoModelForCausalLM,
+                         tokenizer: AutoTokenizer,
+                         input_data: str,
+                         max_tokens: int = 2048,
+                         min_new_tokens: int = 25,
+                         max_new_tokens: int = 50) -> str:
+    """
+    Generate and decode output from a Transformers model using a prompt.
+    """
+
+    # Check whether input will not include the end prompt due to context window length, and manually truncate if necessary
+    tokenized = tokenizer.encode(input_data)
+
+    # If the input is too long, truncate it to the maximum length minus the length of the end prompt
+    # if len(tokenized) > max_tokens:
+    #     input = tokenizer.decode(tokenized[:max_tokens-len(tokenizer.encode(end_prompt))-1], skip_special_tokens=True) + end_prompt
+
+    # Calculate the position of the start of the output string
+    start_decode = len(tokenizer.encode(input_data, truncation=True, max_length=max_tokens))
+
+    # Encode the input string
+    input_ids = tokenizer(input_data, return_tensors='pt', truncation=True, max_length=max_tokens).to(model.device)
+
+    # Generate text from prompt
+    with torch.no_grad():
+        output = model.generate(**input_ids, max_new_tokens=max_new_tokens, min_new_tokens=min_new_tokens)
+
+    # Decode the output string, removing the special tokens and any suffixes
+    decoded = tokenizer.decode(output[0][start_decode:])
+
+    return decoded
 
 def normalize_answer(s):
     """Removing articles and punctuation, and standardizing whitespace are all typical text processing steps."""
@@ -201,8 +243,13 @@ def clean_response(text, positive_value, negative_value):
     # Filter down to only valid response tokens
     gold_toks = [tok for tok in gold_toks if tok in [positive_value, negative_value]]
 
-    # Filter out cases where there are multiple response tokens (or no response tokens) in output
-    response = gold_toks[0] if len(gold_toks) == 1 else ''
+    if len(gold_toks) == 0:
+        gold_toks = get_tokens(text)
+        gold_toks = [tok for tok in gold_toks if tok in ['yes','no']]
+        gold_toks = [positive_value if tok == 'yes' else negative_value for tok in gold_toks]
+
+    # Take first response token
+    response = gold_toks[0] if len(gold_toks) >= 1 else ''
 
     if response == positive_value:
         return 1
@@ -291,12 +338,13 @@ def evaluate_hf_model_em(model: AutoModelForCausalLM,
                          remove_suffix: str = None,
                          save_output_dir: str=None,
                          run_name: str='',
-                         start_prompt: str = '### Consider the following question with context: ',
-                         end_prompt: str = ' ### Please answer with one of the options listed in the brackets:',
+                         system_message=None,
+                         transaction=None,
+                         examples=None,
                          positive_value: str = 'y',
                          negative_value: str = 'n',
                          remove_stop_tokens: Iterable=None,
-                         results_dir: str = '',
+                         nshots = 0,
                          ) -> dict:
     """
     Evaluate a Hugging Face model on a Entity Matching task.
@@ -314,12 +362,34 @@ def evaluate_hf_model_em(model: AutoModelForCausalLM,
         question = data[idx][input_column]
         ground_truth = data[idx][target_column]
 
+        chat = [
+            {"role": "user", "content": system_message}
+        ]
+        for shot in range(1, nshots+1):
+            if chat[-1]['role'] == 'user':
+                chat[-1]['content'] += examples[f'example_{shot}_question']
+            else:
+                chat.append({"role": "user", "content": examples[f'example_{shot}_question']})
+            chat.append({"role": "assistant", "content": examples[f'example_{shot}_response']})
+        if chat[-1]['role'] == 'user':
+            chat[-1]['content'] += question + transaction
+        else:
+            chat.append({"role": "user", "content": question + transaction})
+
+        input_data = tokenizer.apply_chat_template(chat, tokenize=False, add_generation_prompt=True)
+
+        if 'falcon' in tokenizer.name_or_path:
+            input_data = input_data.replace('user', 'User:')
+            input_data = input_data.replace('assistant', 'Assistant:')
+            input_data = input_data.replace('Assistant:!', 'assistant!')
+            input_data = input_data.replace('Assistant:,', 'assistant,')
+            input_data = input_data.replace('<|im_start|>', '')
+            input_data = input_data.replace('<|im_end|>', '')
+
         # Generate and decode the output string, removing the special tokens and any suffixes
         decoded = generate_from_prompt(model=model,
                                        tokenizer=tokenizer,
-                                       input_data=question,
-                                       start_prompt=start_prompt,
-                                       end_prompt=end_prompt,
+                                       input_data=input_data,
                                        max_tokens=max_tokens,
                                        min_new_tokens=min_new_tokens,
                                        max_new_tokens=max_new_tokens)
@@ -371,15 +441,13 @@ def evaluate_openai_model_em(bot: DialogueBot,
                              input_column: str = 'input',
                              target_column: str = 'output',
                              max_samples: int = None,
-                             start_prompt: str = '### Consider the following question with context: ',
-                             end_prompt: str = ' ### Please answer with one of the options listed in the brackets:',
                              positive_value: str = 'y',
                              negative_value: str = 'n',
                              save_output_dir=None,
-                             results_dir=None,
                              run_name='',
                              remove_stop_tokens=False,
-                             intermediate_outputs_dir=None
+                             intermediate_outputs_dir=None,
+                             dataset=None
                              ) -> dict:
     """
     Evaluate an OpenAI model on a dataset using EM metrics.
@@ -419,7 +487,7 @@ def evaluate_openai_model_em(bot: DialogueBot,
     # Iterate over the dataset
     for idx in tqdm(range(min(max_samples, len(data))), desc='Evaluating OpenAI EM model'):
         # Create the input string
-        input = start_prompt + data[idx][input_column] + end_prompt
+        input = data[idx][input_column] + transaction[dataset]
         ground_truth = data[idx][target_column]
 
 
@@ -470,8 +538,6 @@ def evaluate_openai_model_em(bot: DialogueBot,
 
 
 if __name__ == '__main__':
-    warnings.warn("YOU ARE RUNNING A SCRIPT THAT HAS NOT BEEN ADAPTED TO EM ")
-
     # Parse the command line arguments
     parser = argparse.ArgumentParser(description='Evaluate a model on an EM task.')
 
@@ -480,7 +546,13 @@ if __name__ == '__main__':
                         default='hf')
     parser.add_argument('--hf_model_id', type=str, help='The Huggingface model to evaluate',
                         default='mistralai/Mistral-7B-Instruct-v0.1')
+    parser.add_argument('--hf_lora_weights',type=str, help='If using pre-trained lora, the path to the weights file. '
+                                                           'Only used if model_type is hf_crossover', 
+                        default=None)
+    parser.add_argument('--adapter_revision', type=str,help='If using a commit of a model, the commit hash to use',
+                        default=None)
     parser.add_argument('--oai_model_id', type=str, help='The OpenAI model ID to use', default='gpt-3.5-turbo')
+    parser.add_argument('--hf_token_var', type=str, default='HF_TOKEN', help='Name of hugging face token environment variable')
 
     # Dataset arguments
     parser.add_argument('--dataset', type=str, help='The dataset to evaluate on', default='isaacOnline/deeds-and-voting-matching')
@@ -508,7 +580,6 @@ if __name__ == '__main__':
     parser.add_argument('--first_shot', type=str, help='The first shot to use for the model', default=None)
     parser.add_argument('--second_shot', type=str, help='The second shot to use for the model', default=None)
     parser.add_argument('--third_shot', type=str, help='The third shot to use for the model', default=None)
-    parser.add_argument('--transition', type=str, help='The transition to use between shots', default=EM_TRANSITION)
 
     # PEFT arguments
     parser.add_argument('--peft_model', type=bool, help='Whether to use a PEFT model', default=False)
@@ -523,7 +594,6 @@ if __name__ == '__main__':
     # Environment and reproducibility arguments
     parser.add_argument('--device', type=str, help='The device to use for inference', default='cuda:0')
     parser.add_argument('--seed', type=int, help='The random seed to use', default=42)
-    parser.add_argument('--results_dir', type=str, help='The directory to save the results to', default='results')
     parser.add_argument('--intermediate_outputs_dir', type=str, help='The directory to save the intermediate outputs to', default='intermediate_outputs')
     parser.add_argument('--run_name', type=str, default='fact_checking_eval', help='The name of the project, for logging.')
 
@@ -557,36 +627,13 @@ if __name__ == '__main__':
     if args.openai_api_var != 'OPENAI_API_KEY':
         os.environ['OPENAI_API_KEY'] = getenv(args.openai_api_var)
 
-    # Create results directory
-    if not path.exists(args.results_dir):
-        makedirs(args.results_dir)
 
     # Update the start and end prompts if using the model defaults
     if args.start_prompt is None:
-        args.start_prompt = EM_INSTRUCTION[args.dataset]
-    if args.use_model_prompt_defaults:
-        args.start_prompt = EM_MODEL_CHAT_TOKENS[args.use_model_prompt_defaults] + args.start_prompt
-        args.end_prompt = EM_MODEL_END_PROMPTS[args.use_model_prompt_defaults]
-        args.remove_suffix = EM_MODEL_SUFFIXES[args.use_model_prompt_defaults]
+        args.remove_suffix = MODEL_SUFFIXES[args.use_model_prompt_defaults]
 
-
-    # Add shots to the start prompt if specified
-    if args.shots > 0:
-
-        if args.shots == 1:
-            if args.first_shot is None:
-                args.first_shot = EM_ONE_SHOT[args.dataset]
-            args.start_prompt = args.start_prompt + args.first_shot + args.transition
-        elif args.shots == 2:
-            if args.second_shot is None:
-                args.second_shot = EM_TWO_SHOT[args.dataset]
-            args.start_prompt = args.start_prompt + args.first_shot + args.second_shot + args.transition
-        elif args.shots == 3:
-            if args.third_shot is None:
-                args.third_shot = EM_THREE_SHOT[args.dataset]
-            args.start_prompt = args.start_prompt + args.first_shot + args.second_shot + args.third_shot + args.transition
-        else:
-            raise ValueError('Invalid number of shots: ', args.shots)
+    if args.hf_token_var:
+        hf_login(token=getenv(args.hf_token_var), add_to_git_credential=False, write_permission=True)
 
     # Create list of stop tokens to remove
     if args.remove_stop_tokens:
@@ -603,50 +650,95 @@ if __name__ == '__main__':
     if args.model_type == 'hf':
         # Load the Hugging Face model and tokenizer
         print('Loading Hugging Face model: ', args.hf_model_id)
-        tokenizer = AutoTokenizer.from_pretrained(args.hf_model_id)
-        tokenizer.pad_token_id = tokenizer.eos_token_id
 
         # Load the quantized model in the specified precision
-        if args.four_bit:
-            model = AutoModelForCausalLM.from_pretrained(args.hf_model_id, quantization_config=QUANZATION_MAP['4bit'])
-
-        elif args.eight_bit:
-            model = AutoModelForCausalLM.from_pretrained(args.hf_model_id, quantization_config=QUANZATION_MAP['8bit'])
-
-        # If the model is not a quantized model, load the Hugging Face model and tokenizer
-        else:
-            model = AutoModelForCausalLM.from_pretrained(args.hf_model_id).to(args.device)
-
-        # If the model is a PEFT model, load the PEFT model and tokenizer
-        if args.peft_model:
-            # Get the PEFT model
-            model = PeftModel.from_pretrained(model, args.peft_dir)
+        model, tokenizer = get_model_and_tokenizer(args.hf_model_id,
+                                                   gradient_checkpointing=False,
+                                                   quantization_type='4bit',
+                                                   device=args.device)
 
         # Set the model to evaluation mode
         model.eval()
 
         # Evaluate the Hugging Face model
         print('Evaluating Hugging Face model on EM task: ', args.hf_model_id)
-        em_metrics, model_output = evaluate_hf_model_em(model=model,
-                                          tokenizer=tokenizer,
-                                          data=data,
-                                          input_column=args.input_column,
-                                          target_column=args.target_column,
-                                          max_samples=args.max_samples,
-                                          start_prompt=args.start_prompt,
-                                          end_prompt=args.end_prompt,
-                                          max_tokens=args.max_tokens,
-                                          min_new_tokens=args.min_new_tokens,
-                                          max_new_tokens=args.max_new_tokens,
-                                          remove_suffix=args.remove_suffix,
-                                          results_dir=args.results_dir,
-                                          run_name=args.run_name,
-                                          remove_stop_tokens=args.remove_stop_tokens)
 
+        # Log eval time start
+        if args.wandb_logging == 'True':
+            inference_start_time = time.time()
+            wandb.log({'inference_time_start': inference_start_time})
+        em_metrics, model_output = evaluate_hf_model_em(model=model,
+                                                        tokenizer=tokenizer,
+                                                        data=data,
+                                                        input_column=args.input_column,
+                                                        target_column=args.target_column,
+                                                        max_samples=args.max_samples,
+                                                        max_tokens=args.max_tokens,
+                                                        min_new_tokens=args.min_new_tokens,
+                                                        max_new_tokens=args.max_new_tokens,
+                                                        remove_suffix=args.remove_suffix,
+                                                        run_name=args.run_name,
+                                                        remove_stop_tokens=args.remove_stop_tokens,
+                                                        system_message=system_message[args.dataset],
+                                                        transaction=transaction[args.dataset],
+                                                        examples=examples[args.dataset],
+                                                        nshots=args.shots
+                                                        )
+
+        #Log eval end time
+        if args.wandb_logging == 'True':
+            inference_end_time = time.time()
+            wandb.log({'inference_time_end': inference_end_time})
+            wandb.log({'inference_time': inference_end_time - inference_start_time})
+
+    elif args.model_type == 'hf_crossover':
+        # Load the Hugging Face model and tokenizer
+        print('Loading Hugging Face model: ', args.hf_model_id)
+
+        # Load the quantized model in the specified precision
+        model, tokenizer = get_lora_pretrained_model(args.hf_model_id,
+                                                     args.hf_lora_weights,
+                                                     device=args.device,
+                                                     gradient_checkpointing = False,
+                                                     quantization_type = '4bit',
+                                                     revision=args.adapter_revision
+        )
+
+        # Set the model to evaluation mode
+        model.eval()
+
+        # Evaluate the Hugging Face model
+        print('Evaluating Hugging Face model on EM task: ', args.hf_model_id)
+
+        # Log eval time start
+        if args.wandb_logging == 'True':
+            inference_start_time = time.time()
+            wandb.log({'inference_time_start': inference_start_time})
+        em_metrics, model_output = evaluate_hf_model_em(model=model,
+                                                        tokenizer=tokenizer,
+                                                        data=data,
+                                                        input_column=args.input_column,
+                                                        target_column=args.target_column,
+                                                        max_samples=args.max_samples,
+                                                        max_tokens=args.max_tokens,
+                                                        min_new_tokens=args.min_new_tokens,
+                                                        max_new_tokens=args.max_new_tokens,
+                                                        remove_suffix=args.remove_suffix,
+                                                        run_name=args.run_name,
+                                                        remove_stop_tokens=args.remove_stop_tokens,
+                                                        system_message=system_message[args.dataset],
+                                                        transaction=transaction[args.dataset],
+                                                        examples=examples[args.dataset],
+                                                        nshots=args.shots
+                                                        )
+
+        #Log eval end time
+        if args.wandb_logging == 'True':
+            inference_end_time = time.time()
+            wandb.log({'inference_time_end': inference_end_time})
+            wandb.log({'inference_time': inference_end_time - inference_start_time})
     # OpenAI model
     elif args.model_type == 'openai':
-        # NOTE: OpenAI Diaglogue bot QandA task has not been tested
-        # TODO: Test
 
         args.intermediate_outputs_dir = f'{args.intermediate_outputs_dir}_{args.shots}-shot'
 
@@ -654,20 +746,39 @@ if __name__ == '__main__':
         if not path.exists(args.intermediate_outputs_dir):
             makedirs(args.intermediate_outputs_dir)
 
+        # Log eval time start
+        if args.wandb_logging == 'True':
+            inference_start_time = time.time()
+            wandb.log({'inference_time_start': inference_start_time})
+
         # Evaluate the OpenAI model
         print('Evaluating OpenAI model on EM task: ', args.oai_model_id)
-        bot = DialogueBot(model=args.oai_model_id, system_prompt=args.system_prompt)
+        chat = [
+            {"role": "user", "content": system_message[args.dataset]}
+        ]
+        for shot in range(1, args.shots+1):
+            if chat[-1]['role'] == 'user':
+                chat[-1]['content'] += examples[args.dataset][f'example_{shot}_question']
+            else:
+                chat.append({"role": "user", "content": examples[args.dataset][f'example_{shot}_question']})
+            chat.append({"role": "assistant", "content": examples[args.dataset][f'example_{shot}_response']})
+
+        bot = DialogueBot(model=args.oai_model_id, system_prompt=args.system_prompt, history=chat)
         em_metrics, model_output = evaluate_openai_model_em(bot = bot,
                                               data = data,
                                               input_column=args.input_column,
                                               target_column=args.target_column,
                                               max_samples=args.max_samples,
-                                              start_prompt=args.start_prompt,
-                                              end_prompt=args.end_prompt,
-                                              results_dir=args.results_dir,
                                               run_name=args.run_name,
                                               remove_stop_tokens=args.remove_stop_tokens,
-                                              intermediate_outputs_dir=args.intermediate_outputs_dir)
+                                              intermediate_outputs_dir=args.intermediate_outputs_dir,
+                                                            dataset=args.dataset)
+
+        #Log eval end time
+        if args.wandb_logging == 'True':
+            inference_end_time = time.time()
+            wandb.log({'inference_time_end': inference_end_time})
+            wandb.log({'inference_time': inference_end_time - inference_start_time})
 
     else:
         raise ValueError('Invalid model type: ', args.model_type)
@@ -682,17 +793,15 @@ if __name__ == '__main__':
 
     # Save the metrics to a JSON file
     model_id = args.hf_model_id if args.model_type == 'hf' else args.oai_model_id
-    save_path = path.join(args.results_dir, f'{model_id.replace("/", "-")}_em_metrics.json')
+    save_path = path.join(args.intermediate_outputs_dir, f'{model_id.replace("/", "-")}_em_metrics.json')
     print('Saving EM metrics to: ', save_path)
 
+    print(f'{args.shots} Results:')
     # Log the metrics to W&B
     if args.wandb_logging == 'True':
         wandb.log(metrics)
         wandb.log({'Model Output': wandb.Table(dataframe=model_output)})
         wandb.finish()
-
-    if not path.exists(args.results_dir):
-        makedirs(args.results_dir)
 
     class NpEncoder(json.JSONEncoder):
         def default(self, obj):
