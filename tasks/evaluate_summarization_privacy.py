@@ -88,15 +88,15 @@ def main():
     #--------------
     # inference
     #--------------
-    for nshot in ['zero', 'one', 'two', 'three']:
-    #for nshot in ['zero']:
+    #for nshot in ['zero', 'one', 'two', 'three']:
+    for nshot in ['zero']:
         print(f"{nshot}shot...")
         args.nshot = nshot
         model.eval()
         model_outputs, metrics = evaluate_hf_model(model=model,
                                                    tokenizer=tokenizer,
-                                                   data=test_data,
-                                                   max_samples=len(test_data),
+                                                   data=train_data,
+                                                   max_samples=len(train_data),
                                                    system_message=system_message,
                                                    transaction=transaction,
                                                    examples = examples,
@@ -109,10 +109,8 @@ def main():
             np.save(f"results/{args.use_model_prompt_defaults}_pretrained_model_{args.nshot}shot_outputs.npy", model_outputs)
         else:
             for k, v in metrics.items():print(f'{k}: {v}')
-            with open(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
-            np.save(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs.npy", model_outputs)    
-            #with open(f"results/{args.use_model_prompt_defaults}_finetuned_model_{args.nshot}shot_outputs.json", 'w') as f: json.dump(metrics, f)
-            #np.save(f"results/{args.use_model_prompt_defaults}_finetuned_model_{args.nshot}shot_outputs.npy", model_outputs)
+            with open(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs_privacy.json", 'w') as f: json.dump(metrics, f)
+            np.save(f"results/{args.model_id.split('/')[1]}_finetuned_model_{args.nshot}shot_outputs_privacy.npy", model_outputs)
 
 if __name__ == "__main__":
     main()
