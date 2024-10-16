@@ -1,6 +1,8 @@
 # Lab-Scale AI
 
-This is the repository housing the code for the Lab-Scale AI project.
+This is a repository housing exprimental, draft tasks for inclusion in the Lab-Scale AI project.  
+
+Unless you are trying something very risky or experimental, it's better to create a new branch in the published repo https://github.com/BillHoweLab/laboratory-scale-ai
 
 ## Description
 
